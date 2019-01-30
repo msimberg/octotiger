@@ -14,9 +14,10 @@
 
 #include <cmath>
 #include <iosfwd>
+
 #include <sstream>
 #include <string>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 void normalize_constants();
 

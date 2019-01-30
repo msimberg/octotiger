@@ -10,11 +10,11 @@
 
 #include "octotiger/real.hpp"
 
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
-std::vector<real> rotating_star(real x, real y, real z, real);
+oct::vector<real> rotating_star(real x, real y, real z, real);
 
-std::vector<real> rotating_star_a(real x, real y, real z, real);
+oct::vector<real> rotating_star_a(real x, real y, real z, real);
 
 
 

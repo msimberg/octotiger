@@ -12,7 +12,7 @@
 #include <array>
 #include <cstddef>
 
-// std::vector<interaction_type> ilist_debugging;
+// oct::vector<interaction_type> ilist_debugging;
 
 extern taylor<4, real> factor;
 extern taylor<4, m2m_vector> factor_half_v;
@@ -22,7 +22,7 @@ namespace octotiger {
 namespace fmm {
     namespace monopole_interactions {
 
-        p2m_kernel::p2m_kernel(std::vector<bool>& neighbor_empty)
+        p2m_kernel::p2m_kernel(oct::vector<bool>& neighbor_empty)
           : neighbor_empty(neighbor_empty)
           , theta_rec_squared(sqr(1.0 / opts().theta)) {
             for (size_t i = 0; i < m2m_int_vector::size(); i++) {
@@ -37,7 +37,7 @@ namespace fmm {
                 potential_expansions_SoA,
             struct_of_array_data<space_vector, real, 3, INNER_CELLS, SOA_PADDING>&
                 angular_corrections_SoA,
-            const std::vector<multiindex<>>& stencil, gsolve_type type, bool (&z_skip)[3][3][3],
+            const oct::vector<multiindex<>>& stencil, gsolve_type type, bool (&z_skip)[3][3][3],
             bool (&y_skip)[3][3], bool (&x_skip)[3]) {
             // for(auto i = 0; i < local_expansions.size(); i++)
             //   std::cout << local_expansions[i] << " ";
@@ -137,7 +137,7 @@ namespace fmm {
         }
 
         void p2m_kernel::vectors_check_empty() {
-            vector_is_empty = std::vector<bool>(PADDED_STRIDE * PADDED_STRIDE * PADDED_STRIDE);
+            vector_is_empty = oct::vector<bool>(PADDED_STRIDE * PADDED_STRIDE * PADDED_STRIDE);
             for (size_t i0 = 0; i0 < PADDED_STRIDE; i0 += 1) {
                 for (size_t i1 = 0; i1 < PADDED_STRIDE; i1 += 1) {
                     for (size_t i2 = 0; i2 < PADDED_STRIDE; i2 += 1) {
@@ -187,16 +187,16 @@ namespace fmm {
             const size_t cell_flat_index_unpadded, const multiindex<>& interaction_partner_index,
             const size_t interaction_partner_flat_index,
             multiindex<m2m_int_vector>& interaction_partner_index_coarse) {
-            std::array<m2m_vector, NDIM> X;
+            oct::array<m2m_vector, NDIM> X;
             X[0] = center_of_masses_SoA.value<0>(cell_flat_index);
             X[1] = center_of_masses_SoA.value<1>(cell_flat_index);
             X[2] = center_of_masses_SoA.value<2>(cell_flat_index);
-            std::array<m2m_vector, 4> tmpstore;
+            oct::array<m2m_vector, 4> tmpstore;
             // tmpstore[0] = potential_expansions_SoA.value<0>(cell_flat_index_unpadded);
             // tmpstore[1] = potential_expansions_SoA.value<1>(cell_flat_index_unpadded);
             // tmpstore[2] = potential_expansions_SoA.value<2>(cell_flat_index_unpadded);
             // tmpstore[3] = potential_expansions_SoA.value<3>(cell_flat_index_unpadded);
-            std::array<m2m_vector, 3> tmp_corrections;
+            oct::array<m2m_vector, 3> tmp_corrections;
             // tmp_corrections[0] = angular_corrections_SoA.value<0>(cell_flat_index_unpadded);
             // tmp_corrections[1] = angular_corrections_SoA.value<1>(cell_flat_index_unpadded);
             // tmp_corrections[2] = angular_corrections_SoA.value<2>(cell_flat_index_unpadded);
@@ -217,23 +217,23 @@ namespace fmm {
             }
             // data_changed = true;
 
-            std::array<m2m_vector, NDIM> Y;
+            oct::array<m2m_vector, NDIM> Y;
             Y[0] = center_of_masses_SoA.value<0>(interaction_partner_flat_index);
             Y[1] = center_of_masses_SoA.value<1>(interaction_partner_flat_index);
             Y[2] = center_of_masses_SoA.value<2>(interaction_partner_flat_index);
-            std::array<m2m_vector, NDIM> dX;
+            oct::array<m2m_vector, NDIM> dX;
             dX[0] = X[0] - Y[0];
             dX[1] = X[1] - Y[1];
             dX[2] = X[2] - Y[2];
 
             D_split D_calculator(dX);
-            std::array<m2m_vector, 20> D_lower;
+            oct::array<m2m_vector, 20> D_lower;
             D_calculator.calculate_D_lower(D_lower);
 
-            std::array<m2m_vector, 17> m_partner;
+            oct::array<m2m_vector, 17> m_partner;
 
             // Array to store the temporary result - was called A in the old style
-            std::array<m2m_vector, 4> cur_pot;
+            oct::array<m2m_vector, 4> cur_pot;
             m_partner[0] = local_expansions_SoA.value<0>(interaction_partner_flat_index);
             cur_pot[0] = m_partner[0] * D_lower[0];
             cur_pot[1] = m_partner[0] * D_lower[1];
@@ -304,7 +304,7 @@ namespace fmm {
 
             // Was B0 in old style, represents the angular corrections
             m2m_vector current_angular_correction[NDIM];
-            std::array<m2m_vector, 15> D_upper;
+            oct::array<m2m_vector, 15> D_upper;
             D_upper[0] =
                 D_calculator.X[0] * D_calculator.X[0] * D_calculator.d3 + 2.0 * D_calculator.d2;
             m2m_vector d3_X00 = D_calculator.d3 * D_calculator.X_00;
@@ -441,11 +441,11 @@ namespace fmm {
             // struct_of_array_taylor<space_vector, real, 3> X =
             //     center_of_masses_SoA.get_view(cell_flat_index);
 
-            std::array<m2m_vector, NDIM> X;
+            oct::array<m2m_vector, NDIM> X;
             X[0] = center_of_masses_SoA.value<0>(cell_flat_index);
             X[1] = center_of_masses_SoA.value<1>(cell_flat_index);
             X[2] = center_of_masses_SoA.value<2>(cell_flat_index);
-            std::array<m2m_vector, 4> tmpstore;
+            oct::array<m2m_vector, 4> tmpstore;
             // tmpstore[0] = potential_expansions_SoA.value<0>(cell_flat_index_unpadded);
             // tmpstore[1] = potential_expansions_SoA.value<1>(cell_flat_index_unpadded);
             // tmpstore[2] = potential_expansions_SoA.value<2>(cell_flat_index_unpadded);
@@ -464,23 +464,23 @@ namespace fmm {
                 return;
             }
 
-            std::array<m2m_vector, NDIM> Y;
+            oct::array<m2m_vector, NDIM> Y;
             Y[0] = center_of_masses_SoA.value<0>(interaction_partner_flat_index);
             Y[1] = center_of_masses_SoA.value<1>(interaction_partner_flat_index);
             Y[2] = center_of_masses_SoA.value<2>(interaction_partner_flat_index);
-            std::array<m2m_vector, NDIM> dX;
+            oct::array<m2m_vector, NDIM> dX;
             dX[0] = X[0] - Y[0];
             dX[1] = X[1] - Y[1];
             dX[2] = X[2] - Y[2];
 
             D_split D_calculator(dX);
-            std::array<m2m_vector, 20> D_lower;
+            oct::array<m2m_vector, 20> D_lower;
             D_calculator.calculate_D_lower(D_lower);
 
-            std::array<m2m_vector, 20> m_partner;
+            oct::array<m2m_vector, 20> m_partner;
 
             // Array to store the temporary result - was called A in the old style
-            std::array<m2m_vector, 4> cur_pot;
+            oct::array<m2m_vector, 4> cur_pot;
             m_partner[0] = local_expansions_SoA.value<0>(interaction_partner_flat_index);
             cur_pot[0] = m_partner[0] * D_lower[0];
             cur_pot[1] = m_partner[0] * D_lower[1];

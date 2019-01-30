@@ -46,7 +46,7 @@ future<void> node_server::exchange_flux_corrections() {
 		const auto face_dim = f.get_dimension();
 		auto const& this_aunt = aunts[f];
 		if (!this_aunt.empty()) {
-			std::array<integer, NDIM> lb, ub;
+			oct::array<integer, NDIM> lb, ub;
 			lb[XDIM] = lb[YDIM] = lb[ZDIM] = 0;
 			ub[XDIM] = ub[YDIM] = ub[ZDIM] = INX;
 			if (f.get_side() == geo::MINUS) {
@@ -70,10 +70,10 @@ future<void> node_server::exchange_flux_corrections() {
 		if (this->nieces[f] == +1) {
 			for (auto const& quadrant : geo::quadrant::full_set()) {
 				futs[index++] = niece_hydro_channels[f][quadrant].get_future().then(
-						hpx::util::annotated_function([this, f, quadrant](future<std::vector<real> > && fdata) -> void
+						hpx::util::annotated_function([this, f, quadrant](future<oct::vector<real> > && fdata) -> void
 						{
 							const auto face_dim = f.get_dimension();
-							std::array<integer, NDIM> lb, ub;
+							oct::array<integer, NDIM> lb, ub;
 							switch (face_dim) {
 								case XDIM:
 								lb[XDIM] = f.get_side() == geo::MINUS ? 0 : INX;
@@ -123,7 +123,7 @@ void node_server::all_hydro_bounds(bool tau_only) {
 void node_server::exchange_interlevel_hydro_data() {
 
 	if (is_refined) {
-		std::vector<real> outflow(opts().n_fields, ZERO);
+		oct::vector<real> outflow(opts().n_fields, ZERO);
 		for (auto const& ci : geo::octant::full_set()) {
 			auto data = GET(child_hydro_channels[ci].get_future(hcycle));
 			grid_ptr->set_restrict(data, ci);
@@ -187,8 +187,8 @@ void node_server::send_hydro_amr_boundaries(bool tau_only) {
 			for (auto& dir : geo::direction::full_set()) {
 				//			if (!dir.is_vertex()) {
 				if (flags[dir]) {
-					std::array<integer, NDIM> lb, ub;
-					std::vector<real> data;
+					oct::array<integer, NDIM> lb, ub;
+					oct::vector<real> data;
 //						const integer width = dir.is_face() ? H_BW : 1;
 					const integer width = H_BW;
 					if (!tau_only) {
@@ -301,7 +301,7 @@ node_server::node_server(const node_location& loc, const node_client& parent_id,
 }
 
 node_server::node_server(const node_location& _my_location, integer _step_num, bool _is_refined, real _current_time,
-		real _rotational_time, const std::array<integer, NCHILD>& _child_d, grid _grid, const std::vector<hpx::id_type>& _c,
+		real _rotational_time, const oct::array<integer, NCHILD>& _child_d, grid _grid, const oct::vector<hpx::id_type>& _c,
 		std::size_t _hcycle, std::size_t _rcycle, std::size_t _gcycle, integer position_) {
 	my_location = _my_location;
 	initialize(_current_time, _rotational_time);
@@ -375,7 +375,7 @@ void node_server::compute_fmm(gsolve_type type, bool energy_account, bool aonly)
 	}
 
 	if (!aonly) {
-		std::vector<future<void>> send_futs;
+		oct::vector<future<void>> send_futs;
 		for (auto const& dir : geo::direction::full_set()) {
 			if (!neighbors[dir].empty()) {
 				auto ndir = dir.flip();
@@ -398,7 +398,7 @@ void node_server::compute_fmm(gsolve_type type, bool energy_account, bool aonly)
 	// data managemenet for old and new version of interaction computation
 	// all neighbors and placeholder for yourself
 	bool contains_multipole = false;
-	std::vector<neighbor_gravity_type> all_neighbor_interaction_data;
+	oct::vector<neighbor_gravity_type> all_neighbor_interaction_data;
 	for (geo::direction const& dir : geo::direction::full_set()) {
 		if (!neighbors[dir].empty()) {
 			all_neighbor_interaction_data.push_back(neighbor_gravity_channels[dir].get_future(gcycle).get());
@@ -409,7 +409,7 @@ void node_server::compute_fmm(gsolve_type type, bool energy_account, bool aonly)
 		}
 	}
 
-	std::array<bool, geo::direction::count()> is_direction_empty;
+	oct::array<bool, geo::direction::count()> is_direction_empty;
 	for (geo::direction const& dir : geo::direction::full_set()) {
 		if (neighbors[dir].empty()) {
 			is_direction_empty[dir] = true;
@@ -425,20 +425,20 @@ void node_server::compute_fmm(gsolve_type type, bool energy_account, bool aonly)
 	if (new_style_enabled && !grid_ptr->get_root()) {
 
 		// Get all input structures we need as input
-		std::vector<multipole>& M_ptr = grid_ptr->get_M();
-		std::vector<real>& mon_ptr = grid_ptr->get_mon();
-		std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr = grid_ptr->get_com_ptr();
+		oct::vector<multipole>& M_ptr = grid_ptr->get_M();
+		oct::vector<real>& mon_ptr = grid_ptr->get_mon();
+		oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr = grid_ptr->get_com_ptr();
 
 		// initialize to zero
-		std::vector<expansion>& L = grid_ptr->get_L();
-		std::vector<space_vector>& L_c = grid_ptr->get_L_c();
+		oct::vector<expansion>& L = grid_ptr->get_L();
+		oct::vector<space_vector>& L_c = grid_ptr->get_L_c();
 		std::fill(std::begin(L), std::end(L), ZERO);
 		std::fill(std::begin(L_c), std::end(L_c), ZERO);
 
 		// Check if we are a multipole
 		if (!grid_ptr->get_leaf()) {
 			// Input structure, needed for multipole-monopole interactions
-			std::array<real, NDIM> Xbase = { grid_ptr->get_X()[0][hindex(H_BW, H_BW, H_BW)], grid_ptr->get_X()[1][hindex(H_BW,
+			oct::array<real, NDIM> Xbase = { grid_ptr->get_X()[0][hindex(H_BW, H_BW, H_BW)], grid_ptr->get_X()[1][hindex(H_BW,
 					H_BW, H_BW)], grid_ptr->get_X()[2][hindex(H_BW, H_BW, H_BW)] };
 			// Make sure we have the right pointer
 			multipole_interactor.set_grid_ptr(grid_ptr);

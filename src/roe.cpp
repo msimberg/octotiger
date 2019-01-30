@@ -15,7 +15,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 const integer con_i = rho_i;
 const integer acl_i = sx_i;
@@ -35,8 +35,8 @@ real ztwd_sound_speed(real d, real ei) {
     return sqrt(cs2);
 }
 
-real roe_fluxes(hydro_state_t<std::vector<real>>& F, hydro_state_t<std::vector<real>>& UL, hydro_state_t<std::vector<real>>& UR,
-	const std::vector<space_vector>& X, real omega, integer dimension, real dx) {
+real roe_fluxes(hydro_state_t<oct::vector<real>>& F, hydro_state_t<oct::vector<real>>& UL, hydro_state_t<oct::vector<real>>& UR,
+	const oct::vector<space_vector>& X, real omega, integer dimension, real dx) {
 
 	const real fgamma = grid::get_fgamma();
 	const std::size_t sz = UL[0].size();
@@ -49,7 +49,7 @@ real roe_fluxes(hydro_state_t<std::vector<real>>& F, hydro_state_t<std::vector<r
 	for (std::size_t iii = 0; iii < sz; iii += simd_len) {
 		hydro_state_t<simd_vector> ur;
 		hydro_state_t<simd_vector> ul;
-		std::array<simd_vector, NDIM> vf;
+		oct::array<simd_vector, NDIM> vf;
 		for (integer jjj = 0; jjj != simd_len; ++jjj) {
 			const integer index = std::min(integer(iii + jjj), integer(sz - 1));
 			for (integer field = 0; field != opts().n_fields; ++field) {

@@ -9,7 +9,7 @@
 #include "octotiger/taylor.hpp"
 
 #include <cstdint>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -20,10 +20,10 @@ namespace fmm {
         {
         private:
             /// Stores which neighbors are empty so that we can just skip them
-            std::vector<bool>& neighbor_empty;
+            oct::vector<bool>& neighbor_empty;
 
             /// so skip non-existing interaction partners faster, one entry per vector variable
-            std::vector<bool> vector_is_empty;
+            oct::vector<bool> vector_is_empty;
 
             const m2m_vector theta_rec_squared;
             m2m_int_vector offset_vector;
@@ -63,7 +63,7 @@ namespace fmm {
             void vectors_check_empty();
 
         public:
-            p2m_kernel(std::vector<bool>& neighbor_empty);
+            p2m_kernel(oct::vector<bool>& neighbor_empty);
 
             p2m_kernel(p2m_kernel& other) = delete;
             p2m_kernel(const p2m_kernel& other) = delete;
@@ -77,7 +77,7 @@ namespace fmm {
                     potential_expansions_SoA,
                 struct_of_array_data<space_vector, real, 3, INNER_CELLS, SOA_PADDING>&
                     angular_corrections_SoA,
-                const std::vector<multiindex<>>& stencil, gsolve_type type, bool (&z_skip)[3][3][3],
+                const oct::vector<multiindex<>>& stencil, gsolve_type type, bool (&z_skip)[3][3][3],
                 bool (&y_skip)[3][3], bool (&x_skip)[3]);
         };
 

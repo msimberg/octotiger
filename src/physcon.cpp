@@ -165,7 +165,7 @@ HPX_REGISTER_BROADCAST_ACTION (set_physcon_action);
 hpx::future<void> set_physcon(const physcon_t& p) {
 	hpx::future<void> f;
 	if (hpx::get_locality_id() == 0 && options::all_localities.size() > 1) {
-		std::vector<hpx::id_type> remotes;
+		oct::vector<hpx::id_type> remotes;
 		remotes.reserve(options::all_localities.size() - 1);
 		for (hpx::id_type const& id : options::all_localities) {
 			if (id != hpx::find_here())
@@ -212,7 +212,7 @@ HPX_REGISTER_BROADCAST_ACTION (set_AB_action);
 
 void set_AB(real a, real b) {
 	if (hpx::get_locality_id() == 0) {
-		std::vector<hpx::id_type> remotes;
+		oct::vector<hpx::id_type> remotes;
 		remotes.reserve(options::all_localities.size() - 1);
 		for (hpx::id_type const& id : options::all_localities) {
 			if (id != hpx::find_here())
@@ -235,7 +235,7 @@ hpx::future<void> grid::static_change_units(real m, real l, real t, real k) {
 	printf("%e %e %e %e\n", m, l, t, k);
 	hpx::future<void> f;
 	if (hpx::get_locality_id() == 0 && options::all_localities.size() > 1) {
-		std::vector<hpx::id_type> remotes;
+		oct::vector<hpx::id_type> remotes;
 		remotes.reserve(options::all_localities.size() - 1);
 		for (hpx::id_type const& id : options::all_localities) {
 			if (id != hpx::find_here())

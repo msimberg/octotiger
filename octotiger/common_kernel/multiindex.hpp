@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstddef>
 //#include <iostream>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -128,8 +128,8 @@ namespace fmm {
 
     struct two_phase_stencil
     {
-        std::vector<multiindex<>> stencil_elements;
-        std::vector<bool> stencil_phase_indicator;
+        oct::vector<multiindex<>> stencil_elements;
+        oct::vector<bool> stencil_phase_indicator;
     };
 }    // namespace fmm
 }    // namespace octotiger

@@ -16,7 +16,7 @@
 
 #include <array>
 #include <cmath>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 constexpr integer spc_ac_i = spc_i;
 constexpr integer spc_ae_i = spc_i + 1;
@@ -33,8 +33,8 @@ init_func_type problem = nullptr;
 analytic_func_type analytic = nullptr;
 refine_test_type refine_test_function = refine_test;
 
-bool radiation_test_refine(integer level, integer max_level, real x, real y, real z, std::vector<real> U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool radiation_test_refine(integer level, integer max_level, real x, real y, real z, oct::vector<real> U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	return level < max_level;
 	return refine_blast(level, max_level, x, y, z, U, dudx);
 
@@ -55,10 +55,10 @@ bool radiation_test_refine(integer level, integer max_level, real x, real y, rea
 }
 
 
-std::vector<real> radiation_test_problem(real x, real y, real z, real dx) {
+oct::vector<real> radiation_test_problem(real x, real y, real z, real dx) {
 //	return blast_wave(x,y,z,dx);
 
-	std::vector<real> u(opts().n_fields + NRF, real(0));
+	oct::vector<real> u(opts().n_fields + NRF, real(0));
 	x -= 0.0e11;
 	y -= 0.0e11;
 	z -= 0.0e11;
@@ -83,8 +83,8 @@ std::vector<real> radiation_test_problem(real x, real y, real z, real dx) {
 	return u;
 }
 
-bool refine_sod(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_sod(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	for (integer i = 0; i != NDIM; ++i) {
 		if (std::abs(dudx[i][rho_i] / U[rho_i]) >= 0.1) {
 			return level < max_level;
@@ -93,8 +93,8 @@ bool refine_sod(integer level, integer max_level, real x, real y, real z, std::v
 	return false;
 }
 
-bool refine_blast(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_blast(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	bool rc = false;
 	if( level < 2 ) {
 		rc = true;
@@ -112,16 +112,16 @@ bool refine_blast(integer level, integer max_level, real x, real y, real z, std:
 	return rc;
 }
 
-bool refine_test_center(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_test_center(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	if( x*x + y*y + z*z < ssr0) {
 		return level < max_level;
 	}
 	return false;
 }
 
-bool refine_test(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_test(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	bool rc = false;
 	real dx = (opts().xscale / INX) / real(1 << level);
 	if (level < max_level / 2) {
@@ -156,8 +156,8 @@ bool refine_test(integer level, integer max_level, real x, real y, real z, std::
 	return rc;
 }
 
-bool refine_test_moving_star(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_test_moving_star(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	bool rc = false;
 	real den_floor = opts().refinement_floor;
 	integer test_level = max_level;
@@ -176,8 +176,8 @@ bool refine_test_moving_star(integer level, integer max_level, real x, real y, r
 
 
 
-bool refine_test_marshak(integer level, integer max_level, real x, real y, real z, std::vector<real> const& U,
-		std::array<std::vector<real>, NDIM> const& dudx) {
+bool refine_test_marshak(integer level, integer max_level, real x, real y, real z, oct::vector<real> const& U,
+		oct::array<oct::vector<real>, NDIM> const& dudx) {
 	if( level >= max_level ) {
 		return false;
 	} else {
@@ -211,16 +211,16 @@ init_func_type get_analytic() {
 }
 
 /*
- std::vector<real> null_problem(real x, real y, real z, real dx) {
- std::vector<real> u(opts().n_fields, real(0));
+ oct::vector<real> null_problem(real x, real y, real z, real dx) {
+ oct::vector<real> u(opts().n_fields, real(0));
  return u;
  }*/
 
 const real dxs = 0.0;
 const real dys = -0.0;
 
-std::vector<real> double_solid_sphere_analytic_phi(real x0, real y0, real z0) {
-	std::vector<real> u(4, real(0));
+oct::vector<real> double_solid_sphere_analytic_phi(real x0, real y0, real z0) {
+	oct::vector<real> u(4, real(0));
 	auto u1 = solid_sphere_analytic_phi(x0, y0, z0, dxs);
 	auto u2 = solid_sphere_analytic_phi(x0, y0, z0, dys);
 	for (integer f = 0; f != 4; ++f) {
@@ -229,10 +229,10 @@ std::vector<real> double_solid_sphere_analytic_phi(real x0, real y0, real z0) {
 	return u;
 }
 
-std::vector<real> solid_sphere_analytic_phi(real x, real y, real z, real xshift) {
+oct::vector<real> solid_sphere_analytic_phi(real x, real y, real z, real xshift) {
 	const real r0 = ssr0;
 	const real M = 1.0;
-	std::vector<real> g(4);
+	oct::vector<real> g(4);
 	x -= xshift;
 //	x0 -= -0.0444;
 //	y0 -= +0.345;
@@ -252,8 +252,8 @@ std::vector<real> solid_sphere_analytic_phi(real x, real y, real z, real xshift)
 }
 
 
-std::vector<real> double_solid_sphere(real x0, real y0, real z0, real dx) {
-	std::vector<real> u(opts().n_fields, real(0));
+oct::vector<real> double_solid_sphere(real x0, real y0, real z0, real dx) {
+	oct::vector<real> u(opts().n_fields, real(0));
 	auto u1 = solid_sphere(x0, y0, z0, dx, dxs);
 	auto u2 = solid_sphere(x0, y0, z0, dx, dys);
 	for (integer f = 0; f != opts().n_fields; ++f) {
@@ -262,12 +262,12 @@ std::vector<real> double_solid_sphere(real x0, real y0, real z0, real dx) {
 	return u;
 }
 
-std::vector<real> solid_sphere(real x0, real y0, real z0, real dx, real xshift) {
+oct::vector<real> solid_sphere(real x0, real y0, real z0, real dx, real xshift) {
 	const integer N = 25;
 	const real r0 = ssr0;
 	const real V = 4.0 / 3.0 * M_PI * r0 * r0 * r0;
 	const real drho = 1.0 / real(N * N * N) / V;
-	std::vector<real> u(opts().n_fields, real(0));
+	oct::vector<real> u(opts().n_fields, real(0));
 	x0 -= xshift;
 //	x0 -= -0.0444;
 //	y0 -= +0.345;
@@ -325,9 +325,9 @@ const real alpha = 1.0;
 
 void normalize_constants();
 
-std::vector<real> star(real x, real y, real z, real) {
+oct::vector<real> star(real x, real y, real z, real) {
 	const real fgamma = grid::get_fgamma();
-	std::vector<real> u(opts().n_fields, real(0));
+	oct::vector<real> u(opts().n_fields, real(0));
 	if (opts().eos == WD) {
 		const real r = std::sqrt(x * x + y * y + z * z);
 		static struct_eos eos(1.0, 1.0);
@@ -383,7 +383,7 @@ std::vector<real> star(real x, real y, real z, real) {
 	}
 }
 
-std::vector<real> moving_star(real x, real y, real z, real dx) {
+oct::vector<real> moving_star(real x, real y, real z, real dx) {
 	real vx = 1.0;
 	real vy = 1.0;
 	real vz = 0.0;
@@ -398,7 +398,7 @@ std::vector<real> moving_star(real x, real y, real z, real dx) {
 	return u;
 }
 
-std::vector<real> moving_star_analytic(real x, real y, real z, real t) {
+oct::vector<real> moving_star_analytic(real x, real y, real z, real t) {
 	real vx = 1.0;
 	real vy = 1.0;
 	real vz = 0.0;
@@ -418,7 +418,7 @@ std::vector<real> moving_star_analytic(real x, real y, real z, real t) {
 	return u;
 }
 
-std::vector<real> equal_mass_binary(real x, real y, real z, real) {
+oct::vector<real> equal_mass_binary(real x, real y, real z, real) {
 
 	const integer don_i = spc_ac_i;
 	const integer acc_i = spc_dc_i;
@@ -428,7 +428,7 @@ std::vector<real> equal_mass_binary(real x, real y, real z, real) {
 	real alpha = 1.0 / 15.0;
 	const real n = real(1) / (fgamma - real(1));
 	const real rho_min = 1.0e-12;
-	std::vector<real> u(opts().n_fields, real(0));
+	oct::vector<real> u(opts().n_fields, real(0));
 	const real d = 1.0 / 2.0;
 	real x1 = x - d;
 	real x2 = x + d;

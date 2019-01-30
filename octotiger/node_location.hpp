@@ -10,6 +10,7 @@
 
 #include "octotiger/defs.hpp"
 #include "octotiger/geometry.hpp"
+#include <octotiger/debug_vector.hpp>
 
 #include <hpx/include/components.hpp>
 #include <hpx/traits/is_bitwise_serializable.hpp>
@@ -18,13 +19,13 @@
 
 class node_client;
 
-using range_type = std::array<std::pair<int, int>, NDIM>;
+using range_type = oct::array<std::pair<int, int>, NDIM>;
 
 range_type intersection(const range_type& r1, const range_type& r2);
 
 class node_location {
 private:
-	std::array<integer, NDIM> xloc;
+	oct::array<integer, NDIM> xloc;
 	integer lev;
 public:
 	using node_id = std::uint64_t;
@@ -65,7 +66,7 @@ public:
 	}
 	std::size_t load(FILE* fp);
 	std::size_t save(FILE* fp) const;
-	std::vector<node_location> get_neighbors() const;
+	oct::vector<node_location> get_neighbors() const;
 	bool has_neighbor(const geo::direction dir) const;
 	node_location get_neighbor(const geo::direction dir) const;
 	bool is_child_of(const node_location& other) const;

@@ -15,7 +15,7 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace util {

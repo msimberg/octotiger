@@ -11,7 +11,7 @@
 #include "octotiger/taylor.hpp"
 
 #include <cstddef>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -62,19 +62,19 @@ namespace fmm {
     {
     public:
         kernel_staging_area(
-            std::vector<real, cuda_pinned_allocator<real>>& local_monopoles,
+            oct::vector<real, cuda_pinned_allocator<real>>& local_monopoles,
             struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
-                std::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA,
+                oct::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA,
             struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
-                std::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA)
+                oct::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA)
           : local_monopoles(local_monopoles)
           , local_expansions_SoA(local_expansions_SoA)
           , center_of_masses_SoA(center_of_masses_SoA) {}
-        std::vector<real, cuda_pinned_allocator<real>>& local_monopoles;
+        oct::vector<real, cuda_pinned_allocator<real>>& local_monopoles;
         struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
-            std::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA;
+            oct::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA;
         struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
-            std::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA;
+            oct::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA;
     };
 
     /// Contains pointers to device buffers
@@ -124,19 +124,19 @@ namespace fmm {
         size_t number_slots;
 
         /// Contains number_cuda_streams_managed cuda interfaces
-        std::vector<util::cuda_helper> stream_interfaces;
+        oct::vector<util::cuda_helper> stream_interfaces;
         /// Pinned memory for each stream, containing room for the expansions
-        std::vector<struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
-            std::vector<real, cuda_pinned_allocator<real>>>>
+        oct::vector<struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
+            oct::vector<real, cuda_pinned_allocator<real>>>>
             local_expansions_slots;
         /// Pinned memory for each stream, containing room for the center of masses
-        std::vector<struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
-            std::vector<real, cuda_pinned_allocator<real>>>>
+        oct::vector<struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
+            oct::vector<real, cuda_pinned_allocator<real>>>>
             center_of_masses_slots;
         /// Pinned memory for each stream, containing room for the monopoles
-        std::vector<std::vector<real, cuda_pinned_allocator<real>>> local_monopole_slots;
+        oct::vector<oct::vector<real, cuda_pinned_allocator<real>>> local_monopole_slots;
         /// Struct container pointers to all cuda device buffers per stream
-        std::vector<kernel_device_enviroment> kernel_device_enviroments;
+        oct::vector<kernel_device_enviroment> kernel_device_enviroments;
     };
 }    // namespace fmm
 }    // namespace octotiger

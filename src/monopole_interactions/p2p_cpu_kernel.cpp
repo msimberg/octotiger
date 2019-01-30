@@ -10,15 +10,15 @@
 
 #include <array>
 #include <cstddef>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
-// std::vector<interaction_type> ilist_debugging;
+// oct::vector<interaction_type> ilist_debugging;
 
 namespace octotiger {
 namespace fmm {
     namespace monopole_interactions {
 
-        p2p_cpu_kernel::p2p_cpu_kernel(std::vector<bool>& neighbor_empty)
+        p2p_cpu_kernel::p2p_cpu_kernel(oct::vector<bool>& neighbor_empty)
           : neighbor_empty(neighbor_empty)
           , theta_rec_squared(sqr(1.0 / opts().theta))
         // , theta_rec_squared_scalar(sqr(1.0 / opts().theta))
@@ -30,10 +30,10 @@ namespace fmm {
             vectors_check_empty();
         }
 
-        void p2p_cpu_kernel::apply_stencil(std::vector<real>& local_expansions,
+        void p2p_cpu_kernel::apply_stencil(oct::vector<real>& local_expansions,
             struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING>&
                 potential_expansions_SoA,
-            const std::vector<multiindex<>>& stencil, const std::vector<std::array<real, 4>>& four, real dx) {
+            const oct::vector<multiindex<>>& stencil, const oct::vector<oct::array<real, 4>>& four, real dx) {
             for (size_t outer_stencil_index = 0; outer_stencil_index < stencil.size();
                  outer_stencil_index += P2P_STENCIL_BLOCKING) {
                 for (size_t i0 = 0; i0 < INNER_CELLS_PER_DIRECTION; i0++) {
@@ -68,10 +68,10 @@ namespace fmm {
                 }
             }
         }
-        void p2p_cpu_kernel::apply_stencil_non_blocked(std::vector<real>& local_expansions,
+        void p2p_cpu_kernel::apply_stencil_non_blocked(oct::vector<real>& local_expansions,
             struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING>&
                 potential_expansions_SoA,
-            const std::vector<bool>& stencil_masks, const std::vector<std::array<real, 4>>& four, real dx) {
+            const oct::vector<bool>& stencil_masks, const oct::vector<oct::array<real, 4>>& four, real dx) {
                 for (size_t i0 = 0; i0 < INNER_CELLS_PER_DIRECTION; i0++) {
                     for (size_t i1 = 0; i1 < INNER_CELLS_PER_DIRECTION; i1++) {
                         // for (size_t i2 = 0; i2 < INNER_CELLS_PER_DIRECTION; i2++) {
@@ -105,7 +105,7 @@ namespace fmm {
             }
 
         void p2p_cpu_kernel::non_blocked_interaction(
-            std::vector<real>& mons,
+            oct::vector<real>& mons,
             struct_of_array_data<expansion, real, 20, INNER_CELLS,
                 SOA_PADDING>& __restrict__ potential_expansions_SoA,    // L
             const multiindex<>& __restrict__ cell_index,
@@ -113,8 +113,8 @@ namespace fmm {
             const multiindex<m2m_int_vector>& __restrict__ cell_index_coarse,
             const multiindex<>& __restrict__ cell_index_unpadded,
             const size_t cell_flat_index_unpadded,
-            const std::vector<bool>& __restrict__ stencil,
-            const std::vector<std::array<real, 4>>& __restrict__ four_constants,
+            const oct::vector<bool>& __restrict__ stencil,
+            const oct::vector<oct::array<real, 4>>& __restrict__ four_constants,
             const size_t outer_stencil_index, real dx) {
 
             const m2m_vector d_components[2] = {1.0 / dx, -1.0 / sqr(dx)};
@@ -192,7 +192,7 @@ namespace fmm {
         }
 
         void p2p_cpu_kernel::blocked_interaction(
-            std::vector<real>& mons,
+            oct::vector<real>& mons,
             struct_of_array_data<expansion, real, 20, INNER_CELLS,
                 SOA_PADDING>& __restrict__ potential_expansions_SoA,    // L
             const multiindex<>& __restrict__ cell_index,
@@ -200,8 +200,8 @@ namespace fmm {
             const multiindex<m2m_int_vector>& __restrict__ cell_index_coarse,
             const multiindex<>& __restrict__ cell_index_unpadded,
             const size_t cell_flat_index_unpadded,
-            const std::vector<multiindex<>>& __restrict__ stencil,
-            const std::vector<std::array<real, 4>>& __restrict__ four_constants,
+            const oct::vector<multiindex<>>& __restrict__ stencil,
+            const oct::vector<oct::array<real, 4>>& __restrict__ four_constants,
             const size_t outer_stencil_index, real dx) {
             multiindex<m2m_int_vector> cell_index_coarse2(cell_index_coarse);
             for (size_t j = 0; j < m2m_int_vector::size(); j++)
@@ -299,7 +299,7 @@ namespace fmm {
         }
 
         void p2p_cpu_kernel::vectors_check_empty() {
-            vector_is_empty = std::vector<bool>(PADDED_STRIDE * PADDED_STRIDE * PADDED_STRIDE);
+            vector_is_empty = oct::vector<bool>(PADDED_STRIDE * PADDED_STRIDE * PADDED_STRIDE);
             for (size_t i0 = 0; i0 < PADDED_STRIDE; i0 += 1) {
                 for (size_t i1 = 0; i1 < PADDED_STRIDE; i1 += 1) {
                     for (size_t i2 = 0; i2 < PADDED_STRIDE; i2 += 1) {

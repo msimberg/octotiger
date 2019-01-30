@@ -11,7 +11,7 @@ namespace fmm {
 
         // overload for kernel-specific simd type
         static inline void set_basis(
-            std::array<m2m_vector, 35>& A, const std::array<m2m_vector, NDIM>& X) {
+            oct::array<m2m_vector, 35>& A, const oct::array<m2m_vector, NDIM>& X) {
             // A is D in the paper in formula (6)
             // taylor<N, T>& A = *this;
 
@@ -149,7 +149,7 @@ namespace fmm {
         class D_split
         {
         public:
-            const std::array<m2m_vector, NDIM>& X;
+            const oct::array<m2m_vector, NDIM>& X;
 
             m2m_vector X_00;
             m2m_vector X_11;
@@ -164,7 +164,7 @@ namespace fmm {
             m2m_vector d3;
 
         public:
-            D_split(const std::array<m2m_vector, NDIM>& X)
+            D_split(const oct::array<m2m_vector, NDIM>& X)
               : X(X) {
                 X_00 = X[0] * X[0];
                 X_11 = X[1] * X[1];
@@ -191,7 +191,7 @@ namespace fmm {
             }
 
             // overload for kernel-specific simd type
-            inline void calculate_D_lower(std::array<m2m_vector, 20>& A) {
+            inline void calculate_D_lower(oct::array<m2m_vector, 20>& A) {
                 // formula (6)
                 A[0] = d0;
 
@@ -246,7 +246,7 @@ namespace fmm {
             }
 
             // // overload for kernel-specific simd type
-            // inline void calculate_D_upper(std::array<m2m_vector, 15>& A) {
+            // inline void calculate_D_upper(oct::array<m2m_vector, 15>& A) {
             //     A[0] = X[0] * X[0] * d3 + 2.0 * d2;
             //     m2m_vector d3_X00 = d3 * X_00;
             //     A[0] += d2;

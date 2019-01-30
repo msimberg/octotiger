@@ -10,7 +10,7 @@
 
 #include <cstddef>
 #include <memory>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 #undef interface
 
@@ -60,19 +60,19 @@ namespace fmm {
             number_slots = number_cuda_streams_managed * slots_per_cuda_stream;
 
             // Get one slot per stream to handle the data on the cpu
-            local_expansions_slots = std::vector<struct_of_array_data<expansion, real, 20, ENTRIES,
-                SOA_PADDING, std::vector<real, cuda_pinned_allocator<real>>>>(number_slots);
+            local_expansions_slots = oct::vector<struct_of_array_data<expansion, real, 20, ENTRIES,
+                SOA_PADDING, oct::vector<real, cuda_pinned_allocator<real>>>>(number_slots);
             center_of_masses_slots =
-                std::vector<struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
-                    std::vector<real, cuda_pinned_allocator<real>>>>(number_slots);
+                oct::vector<struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
+                    oct::vector<real, cuda_pinned_allocator<real>>>>(number_slots);
             local_monopole_slots =
-                std::vector<std::vector<real, cuda_pinned_allocator<real>>>(number_slots);
-            for (std::vector<real, cuda_pinned_allocator<real>>& mons : local_monopole_slots) {
-                mons = std::vector<real, cuda_pinned_allocator<real>>(ENTRIES);
+                oct::vector<oct::vector<real, cuda_pinned_allocator<real>>>(number_slots);
+            for (oct::vector<real, cuda_pinned_allocator<real>>& mons : local_monopole_slots) {
+                mons = oct::vector<real, cuda_pinned_allocator<real>>(ENTRIES);
             }
 
             // Get one kernel enviroment per stream to handle the data on the gpu
-            kernel_device_enviroments = std::vector<kernel_device_enviroment>(number_slots);
+            kernel_device_enviroments = oct::vector<kernel_device_enviroment>(number_slots);
             size_t cur_interface = 0;
             // Todo: Remove slots
             size_t cur_slot = 0;

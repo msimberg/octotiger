@@ -43,8 +43,8 @@ direction face::to_direction() const {
 	return dir;
 }
 
-std::array<face, face::count() / NDIM> face::dimension_subset(const dimension& d) {
-	std::array<face, _count / NDIM> a;
+oct::array<face, face::count() / NDIM> face::dimension_subset(const dimension& d) {
+	oct::array<face, _count / NDIM> a;
 	switch (d.i) {
 	case XDIM:
 		a = { {	0,1}};
@@ -82,8 +82,8 @@ quadrant octant::get_quadrant(const dimension& d) const {
 	return q;
 }
 
-std::array<octant, octant::count() / 2> octant::face_subset(const face& f) {
-	std::array<octant, octant::count() / 2> a;
+oct::array<octant, octant::count() / 2> octant::face_subset(const face& f) {
+	oct::array<octant, octant::count() / 2> a;
 	switch (f.i) {
 	case FXM:
 		a = { {	0,2,4,6}};
@@ -133,7 +133,7 @@ octant quadrant::get_octant_on_face(const face& f) const {
 
 }
 
-integer get_boundary_size(std::array<integer, NDIM>& lb, std::array<integer, NDIM>& ub, const geo::direction& dir,
+integer get_boundary_size(oct::array<integer, NDIM>& lb, oct::array<integer, NDIM>& ub, const geo::direction& dir,
 		const geo::side& side, integer inx, integer bw, integer use_bw) {
 	integer hsize, size;
 	size = 0;

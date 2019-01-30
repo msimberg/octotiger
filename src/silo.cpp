@@ -22,7 +22,7 @@
 #include <future>
 #include <mutex>
 #include <set>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 #define OUTPUT_ROCHE
 
@@ -35,11 +35,11 @@ std::string outflow_name(const std::string& varname) {
 }
 
 struct node_list_t {
-	std::vector<node_location::node_id> silo_leaves;
-	std::vector<node_location::node_id> all;
-	std::vector<integer> positions;
-	std::vector<std::vector<double>> extents;
-	std::vector<int> zone_count;
+	oct::vector<node_location::node_id> silo_leaves;
+	oct::vector<node_location::node_id> all;
+	oct::vector<integer> positions;
+	oct::vector<oct::vector<double>> extents;
+	oct::vector<int> zone_count;
 	template<class Arc>
 	void serialize(Arc& arc, unsigned) {
 		arc & silo_leaves;
@@ -145,17 +145,17 @@ static real output_time;
 static real output_rotation_count;
 
 struct mesh_vars_t {
-	std::vector<silo_var_t> vars;
-	std::vector<std::string> var_names;
-	std::vector<std::pair<std::string, real>> outflow;
+	oct::vector<silo_var_t> vars;
+	oct::vector<std::string> var_names;
+	oct::vector<std::pair<std::string, real>> outflow;
 	std::string mesh_name;
 #ifdef OUTPUT_ROCHE
-	std::vector<grid::roche_type> roche;
+	oct::vector<grid::roche_type> roche;
 	std::string roche_name;
 #endif
-	std::vector<std::vector<real>> X;
-	std::array<int, NDIM> X_dims;
-	std::array<int, NDIM> var_dims;
+	oct::vector<oct::vector<real>> X;
+	oct::array<int, NDIM> X_dims;
+	oct::array<int, NDIM> var_dims;
 	node_location location;
 	mesh_vars_t(mesh_vars_t&&) = default;
 	int compression_level() {
@@ -191,7 +191,7 @@ struct mesh_vars_t {
 };
 
 void output_stage1(std::string fname, int cycle) {
-	std::vector<node_location::node_id> ids;
+	oct::vector<node_location::node_id> ids;
 	futs_.clear();
 	const auto* node_ptr_ = node_registry::begin()->second.get_ptr().get();
 	output_time = node_ptr_->get_time() * opts().code_to_s;
@@ -221,18 +221,18 @@ void output_stage1(std::string fname, int cycle) {
 	}
 }
 
-std::vector<mesh_vars_t> compress(std::vector<mesh_vars_t>&& mesh_vars) {
+oct::vector<mesh_vars_t> compress(oct::vector<mesh_vars_t>&& mesh_vars) {
 
 //	printf("Compressing %i grids...\n", int(mesh_vars.size()));
 
 	using table_type = std::unordered_map<node_location::node_id, std::shared_ptr<mesh_vars_t>>;
 	table_type table;
-	std::vector<mesh_vars_t> done;
+	oct::vector<mesh_vars_t> done;
 	for (auto& mv : mesh_vars) {
 		table.insert(std::make_pair(mv.location.to_id(), std::make_shared<mesh_vars_t>(std::move(mv))));
 	}
 	int ll = 0;
-	std::vector<table_type::iterator> iters;
+	oct::vector<table_type::iterator> iters;
 	while (table.size()) {
 		iters.clear();
 		auto i = table.begin();
@@ -292,7 +292,7 @@ std::vector<mesh_vars_t> compress(std::vector<mesh_vars_t>&& mesh_vars) {
 #ifdef OUTPUT_ROCHE
 				if (opts().problem == DWD) {
 					const int nx = new_mesh_ptr->var_dims[0] / 2;
-					std::vector<grid::roche_type> roche(8 * nx * nx * nx);
+					oct::vector<grid::roche_type> roche(8 * nx * nx * nx);
 					for (integer ci = 0; ci != NCHILD; ci++) {
 						const int ib = ((ci >> 0) & 1) * nx;
 						const int jb = ((ci >> 1) & 1) * nx;
@@ -337,7 +337,7 @@ std::vector<mesh_vars_t> compress(std::vector<mesh_vars_t>&& mesh_vars) {
 	return std::move(done);
 }
 
-static std::vector<mesh_vars_t> all_mesh_vars;
+static oct::vector<mesh_vars_t> all_mesh_vars;
 
 node_list_t output_stage2(std::string fname, int cycle) {
 	const int this_id = hpx::get_locality_id();
@@ -347,7 +347,7 @@ node_list_t output_stage2(std::string fname, int cycle) {
 	for (auto& this_fut : futs_) {
 		all_mesh_vars.push_back(std::move(GET(this_fut)));
 	}
-	std::vector<node_location::node_id> ids;
+	oct::vector<node_location::node_id> ids;
 	if (opts().compress_silo) {
 		all_mesh_vars = compress(std::move(all_mesh_vars));
 	}
@@ -363,8 +363,8 @@ node_list_t output_stage2(std::string fname, int cycle) {
 		}
 
 	}
-	std::vector<node_location::node_id> all;
-	std::vector<integer> positions;
+	oct::vector<node_location::node_id> all;
+	oct::vector<integer> positions;
 	for (auto i = node_registry::begin(); i != node_registry::end(); i++) {
 		all.push_back(i->first.to_id());
 		positions.push_back(i->second.get_ptr().get()->get_position());
@@ -483,11 +483,11 @@ void output_stage3(std::string fname, int cycle) {
 					auto* db = DBOpenReal(this_fname.c_str(), SILO_DRIVER, DB_APPEND);
 					double dtime = output_time;
 					float ftime = dtime;
-					std::vector<node_location> node_locs;
-					std::vector<char*> mesh_names;
-					std::vector<std::vector<char*>> field_names(nfields);
+					oct::vector<node_location> node_locs;
+					oct::vector<char*> mesh_names;
+					oct::vector<oct::vector<char*>> field_names(nfields);
 #ifdef OUTPUT_ROCHE
-				std::vector<char*> roche_names;
+				oct::vector<char*> roche_names;
 #endif
 				for (auto& i : node_list_.silo_leaves) {
 					node_location nloc;
@@ -525,7 +525,7 @@ void output_stage3(std::string fname, int cycle) {
 			int dj = DB_ABUTTING;
 			int six = 2 * NDIM;
 			assert( n_total_domains > 0 );
-			std::vector<double> extents;
+			oct::vector<double> extents;
 			for( const auto& n : node_locs ) {
 				const real scale = opts().xscale * opts().code_to_cm;
 				const double xmin = n.x_location(0)*scale;
@@ -551,7 +551,7 @@ void output_stage3(std::string fname, int cycle) {
 			DBAddOption(optlist, DBOPT_EXTENTS_SIZE, &six);
 			DBAddOption(optlist, DBOPT_EXTENTS, extents.data());
 			DBAddOption(optlist, DBOPT_ZONECOUNTS, node_list_.zone_count.data());
-			DBAddOption(optlist, DBOPT_HAS_EXTERNAL_ZONES, std::vector<int>(n_total_domains).data());
+			DBAddOption(optlist, DBOPT_HAS_EXTERNAL_ZONES, oct::vector<int>(n_total_domains).data());
 //			DBAddOption(optlist, DBOPT_TV_CONNECTIVITY, &one);
 			DBAddOption(optlist, DBOPT_DISJOINT_MODE,&dj);
 			DBAddOption(optlist, DBOPT_TOPO_DIM, &three);
@@ -573,7 +573,7 @@ void output_stage3(std::string fname, int cycle) {
 				DBAddOption(optlist, DBOPT_EXTENTS_SIZE, &two);
 				DBAddOption(optlist, DBOPT_EXTENTS, node_list_.extents[f].data());
 				DBAddOption(optlist, DBOPT_MMESH_NAME, mmesh);
-				DBPutMultivar( db, top_field_names[f].c_str(), n_total_domains, field_names[f].data(), std::vector<int>(n_total_domains, DB_QUADVAR).data(), optlist);
+				DBPutMultivar( db, top_field_names[f].c_str(), n_total_domains, field_names[f].data(), oct::vector<int>(n_total_domains, DB_QUADVAR).data(), optlist);
 				DBFreeOptlist( optlist);
 			}
 #ifdef OUTPUT_ROCHE
@@ -583,7 +583,7 @@ void output_stage3(std::string fname, int cycle) {
 					DBAddOption(optlist, DBOPT_TIME, &ftime);
 					DBAddOption(optlist, DBOPT_DTIME, &dtime);
 					DBAddOption(optlist, DBOPT_MMESH_NAME, mmesh);
-					DBPutMultivar( db, "roche_geometry", n_total_domains, roche_names.data(), std::vector<int>(n_total_domains, DB_QUADVAR).data(), optlist);
+					DBPutMultivar( db, "roche_geometry", n_total_domains, roche_names.data(), oct::vector<int>(n_total_domains, DB_QUADVAR).data(), optlist);
 					DBFreeOptlist( optlist);
 				}
 #endif
@@ -627,14 +627,14 @@ void output_stage3(std::string fname, int cycle) {
 
 				// mesh adjacency information
 				int nleaves = node_locs.size();
-				std::vector<int> neighbor_count(nleaves,0);
-				std::vector<std::vector<int>> neighbor_lists(nleaves);
-				std::vector<std::vector<int>> back_lists(nleaves);
-				std::vector<int> linear_neighbor_list;
-				std::vector<int> linear_back_list;
-				std::vector<std::vector<int*>> connections(nleaves);
-				std::vector<int*> linear_connections;
-				std::vector<std::vector<int>> tmp;
+				oct::vector<int> neighbor_count(nleaves,0);
+				oct::vector<oct::vector<int>> neighbor_lists(nleaves);
+				oct::vector<oct::vector<int>> back_lists(nleaves);
+				oct::vector<int> linear_neighbor_list;
+				oct::vector<int> linear_back_list;
+				oct::vector<oct::vector<int*>> connections(nleaves);
+				oct::vector<int*> linear_connections;
+				oct::vector<oct::vector<int>> tmp;
 				for( int n = 0; n < nleaves; n++) {
 					for( int m = n+1; m < nleaves; m++) {
 						range_type rn, rm, i;
@@ -648,8 +648,8 @@ void output_stage3(std::string fname, int cycle) {
 							back_lists[n].push_back(neighbor_lists[m].size());
 							neighbor_lists[m].push_back(n); //
 							neighbor_lists[n].push_back(m);
-							std::vector<int> adj1(15);
-							std::vector<int> adj2(15);
+							oct::vector<int> adj1(15);
+							oct::vector<int> adj2(15);
 							for( int d = 0; d < NDIM; d++) {
 								int d0 = NDIM - d - 1;
 								adj1[2*d+0] = rn[d].first;
@@ -677,8 +677,8 @@ void output_stage3(std::string fname, int cycle) {
 						linear_connections.push_back(connections[n][m]);
 					}
 				}
-				std::vector<int> fifteen(linear_connections.size(),15);
-				std::vector<int> mesh_types(nleaves,mesh_type);
+				oct::vector<int> fifteen(linear_connections.size(),15);
+				oct::vector<int> mesh_types(nleaves,mesh_type);
 				int isTimeVarying = 1;
 				int n = 1;
 				DBWrite(db, "ConnectivityIsTimeVarying", &isTimeVarying, &n,
@@ -692,9 +692,9 @@ void output_stage3(std::string fname, int cycle) {
 				// Expressions
 
 				DBSetDir(db,"/");
-				std::vector<char*> names;
-				std::vector<char*> defs;
-				std::vector<int> types;
+				oct::vector<char*> names;
+				oct::vector<char*> defs;
+				oct::vector<int> types;
 				auto exps1 = grid::get_scalar_expressions();
 				auto exps2 = grid::get_vector_expressions();
 //				decltype(exps1) exps;
@@ -998,8 +998,8 @@ void load_data_from_silo(std::string fname, node_server* root_ptr, hpx::id_type 
 	DBfile* db = GET(hpx::threads::run_as_os_thread(DBOpenReal, fname.c_str(), SILO_DRIVER, DB_READ));
 	epoch = GET(hpx::threads::run_as_os_thread(read_silo_var<integer>(), db, "epoch"));
 	epoch++;
-	std::vector<node_location::node_id> node_list;
-	std::vector<integer> positions;
+	oct::vector<node_location::node_id> node_list;
+	oct::vector<integer> positions;
 	std::vector<hpx::future<void>> futs;
 	int node_count;
 	if (db != NULL) {
@@ -1080,8 +1080,8 @@ double silo_var_t::operator()(int i) const {
 	return data_[i];
 }
 
-std::vector<silo_load_t> silo_load_t::decompress() {
-	std::vector<silo_load_t> children;
+oct::vector<silo_load_t> silo_load_t::decompress() {
+	oct::vector<silo_load_t> children;
 	assert(nx > INX);
 	for (int ci = 0; ci < NCHILD; ci++) {
 		silo_load_t child;

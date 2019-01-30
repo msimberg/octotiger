@@ -12,7 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <memory>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -25,9 +25,9 @@ namespace fmm {
             p2p_interaction_interface(void);
             /** Takes AoS data, converts it, calculates FMM monopole-monopole interactions,
               * stores results in L */
-            void compute_p2p_interactions(std::vector<real>& monopoles,
-                std::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
-                std::array<bool, geo::direction::count()>& is_direction_empty);
+            void compute_p2p_interactions(oct::vector<real>& monopoles,
+                oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
+                oct::array<bool, geo::direction::count()>& is_direction_empty);
             /// Sets the grid pointer - usually only required once
             void set_grid_ptr(std::shared_ptr<grid> ptr) {
                 grid_ptr = ptr;
@@ -35,30 +35,30 @@ namespace fmm {
 
         protected:
             template <typename monopole_container>
-            void update_input(std::vector<real>& mons,
-                std::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
+            void update_input(oct::vector<real>& mons,
+                oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
                 monopole_container& local_monopoles);
             void compute_interactions(gsolve_type type,
-                std::array<bool, geo::direction::count()>& is_direction_empty,
-                std::vector<neighbor_gravity_type>& all_neighbor_interaction_data, real dx);
+                oct::array<bool, geo::direction::count()>& is_direction_empty,
+                oct::vector<neighbor_gravity_type>& all_neighbor_interaction_data, real dx);
 
             std::shared_ptr<grid> grid_ptr;
             interaction_kernel_type p2p_type;
         private:
             /// The stencil is used to identify the neighbors
-            static thread_local const std::vector<multiindex<>> stencil;
-            static thread_local const std::vector<bool> stencil_masks;
-            static thread_local const std::vector<std::array<real, 4>> four;
-            static thread_local const std::vector<std::array<real, 4>> stencil_four_constants;
-            static thread_local std::vector<real> local_monopoles_staging_area;
-            std::vector<bool> neighbor_empty_monopoles;
+            static thread_local const oct::vector<multiindex<>> stencil;
+            static thread_local const oct::vector<bool> stencil_masks;
+            static thread_local const oct::vector<oct::array<real, 4>> four;
+            static thread_local const oct::vector<oct::array<real, 4>> stencil_four_constants;
+            static thread_local oct::vector<real> local_monopoles_staging_area;
+            oct::vector<bool> neighbor_empty_monopoles;
 
             p2p_cpu_kernel kernel_monopoles;
         };
 
         template <typename monopole_container>
-        void p2p_interaction_interface::update_input(std::vector<real>& mons,
-            std::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
+        void p2p_interaction_interface::update_input(oct::vector<real>& mons,
+            oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
             monopole_container& local_monopoles) {
             iterate_inner_cells_padded(
                 [&local_monopoles, mons](const multiindex<>& i, const size_t flat_index,
@@ -92,7 +92,7 @@ namespace fmm {
                                 });
                             neighbor_empty_monopoles[dir.flat_index_with_center()] = true;
                         } else {
-                            std::vector<real>& neighbor_mons = *(neighbor.data.m);
+                            oct::vector<real>& neighbor_mons = *(neighbor.data.m);
                             const bool fullsizes = neighbor_mons.size() == INNER_CELLS;
                             if (fullsizes) {
                                 iterate_inner_cells_padding(

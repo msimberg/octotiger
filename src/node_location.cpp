@@ -128,8 +128,8 @@ std::size_t node_location::hash() const {
 	return std::size_t(this->to_id());
 }
 
-std::vector<node_location> node_location::get_neighbors() const {
-	std::vector<node_location> locs;
+oct::vector<node_location> node_location::get_neighbors() const {
+	oct::vector<node_location> locs;
 	locs.reserve(NDIM * NDIM * NDIM - 1);
 	const integer lb = 0;
 	const integer ub = (1 << lev) - 1;
@@ -177,7 +177,7 @@ geo::side node_location::get_child_side(const geo::dimension& d) const {
 }
 
 geo::octant node_location::get_child_index() const {
-	return geo::octant(std::array<geo::side, NDIM>( { { get_child_side(XDIM), get_child_side(YDIM), get_child_side(ZDIM) } }));
+	return geo::octant(oct::array<geo::side, NDIM>( { get_child_side(XDIM), get_child_side(YDIM), get_child_side(ZDIM) }));
 }
 
 bool node_location::is_child_of(const node_location& other) const {
@@ -313,7 +313,7 @@ bool node_location::operator <=(const node_location& other) const {
 
 std::size_t node_location::unique_id() const {
 	std::size_t id = 1;
-	std::array<std::size_t, NDIM> x;
+	oct::array<std::size_t, NDIM> x;
 	for (integer d = 0; d != NDIM; ++d) {
 		x[d] = std::size_t(xloc[d]);
 	}

@@ -14,6 +14,7 @@
 //#include <cstddef>
 //#include <iostream>
 
+#include "octotiger/debug_vector.hpp"
 constexpr double MARSHAK_OPAC = 1.0e+2;
 //#define OCTOTIGER_RESTART_LOAD_SEQ
 

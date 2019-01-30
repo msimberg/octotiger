@@ -86,7 +86,7 @@ public:
 	direction to_direction() const;
 	static constexpr integer count();
 	static constexpr std::array<face, _count> full_set();
-	static std::array<face, _count / NDIM> dimension_subset(const dimension&);
+	static oct::array<face, _count / NDIM> dimension_subset(const dimension&);
 };
 
 class direction: public geo_type {
@@ -199,7 +199,7 @@ class octant: public geo_type {
 public:
 	octant() = default;
 	constexpr octant(integer);
-	octant(const std::array<side, NDIM>&);
+	octant(const oct::array<side, NDIM>&);
 	side get_side(const dimension&) const;
 	bool is_on_face(const face&) const;
 	quadrant get_quadrant(const dimension&) const;
@@ -236,7 +236,7 @@ public:
 	}
 	static constexpr integer count();
 	static constexpr std::array<octant, _count> full_set();
-	static std::array<octant, _count / 2> face_subset(const face&);
+	static oct::array<octant, _count / 2> face_subset(const face&);
 };
 
 class quadrant: public geo_type {
@@ -352,7 +352,7 @@ inline quadrant::quadrant(const octant& o, const dimension& d) :
 		geo_type(o.get_quadrant(d)) {
 }
 
-inline octant::octant(const std::array<side, NDIM>& sides) :
+inline octant::octant(const oct::array<side, NDIM>& sides) :
 		geo_type(sides[XDIM] | (sides[YDIM] << 1) | (sides[ZDIM] << 2)) {
 }
 
@@ -370,6 +370,6 @@ inline face face::flip() const {
 constexpr integer INNER = 0;
 constexpr integer OUTER = 1;
 
-integer get_boundary_size(std::array<integer, NDIM>&, std::array<integer, NDIM>&, const geo::direction&, const geo::side&, integer inx, integer bw, integer nx = -1);
+integer get_boundary_size(oct::array<integer, NDIM>&, oct::array<integer, NDIM>&, const geo::direction&, const geo::side&, integer inx, integer bw, integer nx = -1);
 
 #endif /* GEOMETRY_HPP_ */

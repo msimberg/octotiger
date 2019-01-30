@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <array>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 #include <memory>
 
 #define BUFFER_SIZE (1024*1024)
@@ -14,10 +14,10 @@
 class cubic_table {
 private:
 	const int N;
-	const std::vector<double> x;
-	std::vector<std::array<double, NCOEF>> A;
+	const oct::vector<double> x;
+	oct::vector<oct::array<double, NCOEF>> A;
 
-	std::array<std::array<double, NCOEF>, NCOEF> coef_matrix(double a,
+	oct::array<oct::array<double, NCOEF>, NCOEF> coef_matrix(double a,
 			double b) {
 		return { {
 				{	-(1 + 2*b)/(8.*(a + std::pow(a,2))*(1 + a + b)),(1 + 2*a + 2*b + 4*a*b)/(8*a + 8*a*b),(1 + 2*a + 2*b + 4*a*b)/(8*b + 8*a*b),-(1 + 2*a)/(8.*(1 + a + b)*(b + std::pow(b,2)))},
@@ -27,9 +27,9 @@ private:
 			}};
 	}
 
-	std::array<double, NCOEF> translate(const std::array<double, NCOEF>& in,
+	oct::array<double, NCOEF> translate(const oct::array<double, NCOEF>& in,
 			double dx) {
-		std::array<double, NCOEF> out;
+		oct::array<double, NCOEF> out;
 		out[0] = out[1] = out[2] = out[3] = 0.0;
 
 		out[3] += 1.0 * in[3];
@@ -49,7 +49,7 @@ private:
 		return out;
 	}
 public:
-	cubic_table(const std::vector<double>& y, const std::vector<double>& _x) :
+	cubic_table(const oct::vector<double>& y, const oct::vector<double>& _x) :
 			N(y.size()), x(_x), A(y.size()) {
 		for (int i = 1; i < N - 2; i++) {
 			const double dx0 = (x[i] - x[i - 1]);
@@ -122,7 +122,7 @@ std::function<double(double)> build_rho_of_h_from_mesa(
 		printf("%s not found!\n", filename.c_str());
 		abort();
 	}
-	std::vector<double> P, rho, h;
+	oct::vector<double> P, rho, h;
 	int linenum = 1;
 	while (fgets(line, sizeof line, fp) != NULL) {
 		if (linenum > HEADER_LINES) {

@@ -8,7 +8,7 @@
 #include "octotiger/real.hpp"
 
 #include <array>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -25,23 +25,23 @@ namespace fmm {
         public:
             cuda_multipole_interaction_interface(void);
             /// Takes AoS input, converts, launches kernel and writes AoS results back into L,L_c
-            void compute_multipole_interactions(std::vector<real>& monopoles,
-                std::vector<multipole>& M_ptr,
-                std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr,
-                std::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
-                std::array<bool, geo::direction::count()>& is_direction_empty,
-                std::array<real, NDIM> xbase);
+            void compute_multipole_interactions(oct::vector<real>& monopoles,
+                oct::vector<multipole>& M_ptr,
+                oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr,
+                oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
+                oct::array<bool, geo::direction::count()>& is_direction_empty,
+                oct::array<real, NDIM> xbase);
 
         protected:
             real theta;
 
             /// Host-side pinned memory buffer for angular corrections results
             struct_of_array_data<space_vector, real, 3, INNER_CELLS, SOA_PADDING,
-                std::vector<real, cuda_pinned_allocator<real>>>
+                oct::vector<real, cuda_pinned_allocator<real>>>
                 angular_corrections_SoA;
             /// Host-side pinned memory buffer for potential expansions results
             struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING,
-                std::vector<real, cuda_pinned_allocator<real>>>
+                oct::vector<real, cuda_pinned_allocator<real>>>
                 potential_expansions_SoA;
         };
 

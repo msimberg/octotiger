@@ -8,7 +8,7 @@
 
 #include <array>
 #include <algorithm>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 // Big picture questions:
 // - use any kind of tiling?
@@ -16,9 +16,9 @@
 namespace octotiger {
 namespace fmm {
     namespace monopole_interactions {
-        const thread_local std::vector<multiindex<>> p2m_interaction_interface::stencil =
+        const thread_local oct::vector<multiindex<>> p2m_interaction_interface::stencil =
             calculate_stencil().first;
-        thread_local std::vector<real> p2m_interaction_interface::local_monopoles_staging_area(
+        thread_local oct::vector<real> p2m_interaction_interface::local_monopoles_staging_area(
             ENTRIES);
         thread_local struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING>
             p2m_interaction_interface::local_expansions_staging_area;
@@ -31,19 +31,19 @@ namespace fmm {
             this->p2m_type = opts().p2m_kernel_type;
         }
 
-        void p2m_interaction_interface::compute_p2m_interactions(std::vector<real>& monopoles,
-            std::vector<multipole>& M_ptr,
-            std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr,
-            std::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
-            std::array<bool, geo::direction::count()>& is_direction_empty) {
+        void p2m_interaction_interface::compute_p2m_interactions(oct::vector<real>& monopoles,
+            oct::vector<multipole>& M_ptr,
+            oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr,
+            oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type,
+            oct::array<bool, geo::direction::count()>& is_direction_empty) {
             update_input(monopoles, M_ptr, com_ptr, neighbors, type, local_monopoles_staging_area,
                 local_expansions_staging_area, center_of_masses_staging_area);
             compute_interactions(type, is_direction_empty, neighbors);
         }
 
         void p2m_interaction_interface::compute_interactions(gsolve_type type,
-            std::array<bool, geo::direction::count()>& is_direction_empty,
-            std::vector<neighbor_gravity_type>& all_neighbor_interaction_data) {
+            oct::array<bool, geo::direction::count()>& is_direction_empty,
+            oct::vector<neighbor_gravity_type>& all_neighbor_interaction_data) {
             if (p2m_type == interaction_kernel_type::SOA_CPU) {
                 if (multipole_neighbors_exist) {
                     struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING>

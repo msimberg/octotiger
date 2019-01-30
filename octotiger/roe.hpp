@@ -16,14 +16,14 @@
 #include "octotiger/space_vector.hpp"
 
 #include <algorithm>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 
 constexpr real de_switch2 = real(1.0e-3);
 constexpr real de_switch1 = real(1.0e-1);
 
-real roe_fluxes(hydro_state_t<std::vector<real>>& F, hydro_state_t<std::vector<real>>& UL,
-		hydro_state_t<std::vector<real>>& UR,  const std::vector<space_vector>& X, real omega, integer dimension, real dx);
+real roe_fluxes(hydro_state_t<oct::vector<real>>& F, hydro_state_t<oct::vector<real>>& UL,
+		hydro_state_t<oct::vector<real>>& UR,  const oct::vector<space_vector>& X, real omega, integer dimension, real dx);
 
 
 inline real ztwd_pressure(real d, real A = physcon().A, real B = physcon().B) {

@@ -6,7 +6,7 @@
 #include "octotiger/common_kernel/multiindex.hpp"
 #include "octotiger/taylor.hpp"
 
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -174,8 +174,8 @@ namespace fmm {
         bool space_vector_comparator(const space_vector& ref, const space_vector& mine);
 
         template <typename T, typename compare_functional>
-        bool compare_inner_padded_with_non_padded(const std::vector<T>& ref_array,
-            const std::vector<T>& mine_array, const compare_functional& c) {
+        bool compare_inner_padded_with_non_padded(const oct::vector<T>& ref_array,
+            const oct::vector<T>& mine_array, const compare_functional& c) {
             bool all_ok = true;
             iterate_inner_cells_padded([&c, &all_ok, &ref_array, &mine_array](const multiindex<>& i,
                 const size_t flat_index, const multiindex<>& i_unpadded,
@@ -199,8 +199,8 @@ namespace fmm {
         }
 
         template <typename T, typename compare_functional>
-        bool compare_non_padded_with_non_padded(const std::vector<T>& ref_array,
-            const std::vector<T>& mine_array, const compare_functional& c) {
+        bool compare_non_padded_with_non_padded(const oct::vector<T>& ref_array,
+            const oct::vector<T>& mine_array, const compare_functional& c) {
             bool all_ok = true;
             iterate_inner_cells_not_padded([&c, &all_ok, &ref_array, &mine_array](
                 const multiindex<>& i_unpadded, const size_t flat_index_unpadded) {
@@ -223,9 +223,9 @@ namespace fmm {
 
         template <typename T, typename compare_functional>
         bool compare_padded_with_non_padded(
-            std::array<std::shared_ptr<std::vector<T>>, geo::direction::count()>& all_neighbors_ref,
-            std::array<bool, geo::direction::count()>& is_direction_empty,
-            const std::vector<T>& mine_array, const compare_functional& c) {
+            oct::array<std::shared_ptr<oct::vector<T>>, geo::direction::count()>& all_neighbors_ref,
+            oct::array<bool, geo::direction::count()>& is_direction_empty,
+            const oct::vector<T>& mine_array, const compare_functional& c) {
             bool all_ok = true;
             for (const geo::direction& dir : geo::direction::full_set()) {
                 std::cout << "comparing dir: " << dir;
@@ -234,7 +234,7 @@ namespace fmm {
                           << (all_neighbors_ref[dir].operator bool()) << std::endl;
                 // second condition implies that neighbor is monopole
                 if (!is_direction_empty[dir] && all_neighbors_ref[dir]) {
-                    std::vector<T>& neighbor_ref = *(all_neighbors_ref[dir]);
+                    oct::vector<T>& neighbor_ref = *(all_neighbors_ref[dir]);
                     iterate_inner_cells_padding(
                         dir, [&c, &all_ok, &neighbor_ref, &mine_array, &dir, &all_neighbors_ref](
                                  const multiindex<>& i, const size_t flat_index,

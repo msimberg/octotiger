@@ -33,14 +33,14 @@
 #include <functional>
 #include <memory>
 #include <utility>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 class struct_eos;
 
 class analytic_t {
 public:
-	std::vector<real> l1, l2, linf;
-	std::vector<real> l1a, l2a, linfa;
+	oct::vector<real> l1, l2, linf;
+	oct::vector<real> l1a, l2a, linfa;
 	integer nfields_;
 	template<class Arc>
 	void serialize(Arc& a, unsigned) {
@@ -93,7 +93,7 @@ public:
 
 HPX_IS_BITWISE_SERIALIZABLE(analytic_t);
 
-using line_of_centers_t = std::vector<std::pair<real,std::vector<real>>>;
+using line_of_centers_t = oct::vector<std::pair<real,oct::vector<real>>>;
 
 void output_line_of_centers(FILE* fp, const line_of_centers_t& loc);
 
@@ -106,7 +106,7 @@ using zone_int_type = int;
 
 class grid {
 public:
-	using xpoint = std::array<xpoint_type, NDIM>;
+	using xpoint = oct::array<xpoint_type, NDIM>;
 	struct node_point;
 	static void set_max_level(integer l);
 	static void set_fgamma(real fg) {
@@ -128,18 +128,18 @@ private:
 	static hpx::lcos::local::spinlock omega_mtx;
 	static real scaling_factor;
 	std::shared_ptr<rad_grid> rad_grid_ptr;
-	std::vector<roche_type> roche_lobe;
-	std::vector<std::vector<real>> U;
-	std::vector<std::vector<real>> U0;
-	std::vector<std::vector<real>> dUdt;
-	std::vector<hydro_state_t<std::vector<real>>> F;
-	std::vector<std::vector<real>> X;
-	std::vector<v4sd> G;
-	std::shared_ptr<std::vector<multipole>> M_ptr;
-	std::shared_ptr<std::vector<real>> mon_ptr;
-	std::vector<expansion> L;
-	std::vector<space_vector> L_c;
-	std::vector<real> dphi_dt;
+	oct::vector<roche_type> roche_lobe;
+	oct::vector<oct::vector<real>> U;
+	oct::vector<oct::vector<real>> U0;
+	oct::vector<oct::vector<real>> dUdt;
+	oct::vector<hydro_state_t<oct::vector<real>>> F;
+	oct::vector<oct::vector<real>> X;
+	oct::vector<v4sd> G;
+	std::shared_ptr<oct::vector<multipole>> M_ptr;
+	std::shared_ptr<oct::vector<real>> mon_ptr;
+	oct::vector<expansion> L;
+	oct::vector<space_vector> L_c;
+	oct::vector<real> dphi_dt;
 #ifdef OCTOTIGER_HAVE_GRAV_PAR
 	std::unique_ptr<hpx::lcos::local::spinlock> L_mtx;
 #endif
@@ -148,56 +148,56 @@ private:
 	bool is_root;
 	bool is_leaf;
 	real dx;
-	std::array<real, NDIM> xmin;
-	std::vector<real> U_out;
-	std::vector<real> U_out0;
-	std::vector<std::shared_ptr<std::vector<space_vector>>> com_ptr;
+	oct::array<real, NDIM> xmin;
+	oct::vector<real> U_out;
+	oct::vector<real> U_out0;
+	oct::vector<std::shared_ptr<oct::vector<space_vector>>> com_ptr;
 	static bool xpoint_eq(const xpoint& a, const xpoint& b);
-	void compute_boundary_interactions_multipole_multipole(gsolve_type type, const std::vector<boundary_interaction_type>&,
+	void compute_boundary_interactions_multipole_multipole(gsolve_type type, const oct::vector<boundary_interaction_type>&,
 			const gravity_boundary_type&);
-	void compute_boundary_interactions_monopole_monopole(gsolve_type type, const std::vector<boundary_interaction_type>&,
+	void compute_boundary_interactions_monopole_monopole(gsolve_type type, const oct::vector<boundary_interaction_type>&,
 			const gravity_boundary_type&);
-	void compute_boundary_interactions_monopole_multipole(gsolve_type type, const std::vector<boundary_interaction_type>&,
+	void compute_boundary_interactions_monopole_multipole(gsolve_type type, const oct::vector<boundary_interaction_type>&,
 			const gravity_boundary_type&);
-	void compute_boundary_interactions_multipole_monopole(gsolve_type type, const std::vector<boundary_interaction_type>&,
+	void compute_boundary_interactions_multipole_monopole(gsolve_type type, const oct::vector<boundary_interaction_type>&,
 			const gravity_boundary_type&);
 public:
 	static std::string hydro_units_name(const std::string&);
 	static std::string gravity_units_name(const std::string&);
-	std::vector<roche_type> get_roche_lobe() const;
+	oct::vector<roche_type> get_roche_lobe() const;
 	void rho_from_species();
 	static bool is_hydro_field(const std::string&);
-	static std::vector<std::string> get_field_names();
-	static std::vector<std::string> get_hydro_field_names();
+	static oct::vector<std::string> get_field_names();
+	static oct::vector<std::string> get_hydro_field_names();
 
-	std::vector<multipole>& get_M() {
+	oct::vector<multipole>& get_M() {
 		return *M_ptr;
 	}
 
-	std::vector<real>& get_mon() {
+	oct::vector<real>& get_mon() {
 		return *mon_ptr;
 	}
 
-	std::vector<std::shared_ptr<std::vector<space_vector>>>& get_com_ptr() {
+	oct::vector<std::shared_ptr<oct::vector<space_vector>>>& get_com_ptr() {
 		return com_ptr;
 	}
 
-	std::vector<expansion>& get_L() {
+	oct::vector<expansion>& get_L() {
 		return L;
 	}
 
-	std::vector<space_vector>& get_L_c() {
+	oct::vector<space_vector>& get_L_c() {
 		return L_c;
 	}
 
-	std::array<real, NDIM> get_xmin() {
+	oct::array<real, NDIM> get_xmin() {
 		return xmin;
 	}
 
 	real get_dx() {
 		return dx;
 	}
-	std::vector<std::vector<real>>& get_X() {
+	oct::vector<oct::vector<real>>& get_X() {
 		return X;
 	}
 
@@ -210,18 +210,18 @@ public:
 	real get_dx() const {
 		return dx;
 	}
-	static std::vector<std::pair<std::string,std::string>> get_scalar_expressions();
-	static std::vector<std::pair<std::string,std::string>> get_vector_expressions();
-	std::vector<real>& get_field(integer f) {
+	static oct::vector<std::pair<std::string,std::string>> get_scalar_expressions();
+	static oct::vector<std::pair<std::string,std::string>> get_vector_expressions();
+	oct::vector<real>& get_field(integer f) {
 		return U[f];
 	}
-	const std::vector<real>& get_field(integer f) const {
+	const oct::vector<real>& get_field(integer f) const {
 		return U[f];
 	}
-	void set_field(std::vector<real>&& data, integer f) {
+	void set_field(oct::vector<real>&& data, integer f) {
 		U[f] = std::move(data);
 	}
-	void set_field(const std::vector<real>& data, integer f) {
+	void set_field(const oct::vector<real>& data, integer f) {
 		U[f] = data;
 	}
 	analytic_t compute_analytic(real);
@@ -239,16 +239,16 @@ public:
 	real get_source(integer i, integer j, integer k) const {
 		return U[rho_i][hindex(i + H_BW, j + H_BW, k + H_BW)] * dx * dx * dx;
 	}
-	//std::vector<real> const& get_outflows() const {
+	//oct::vector<real> const& get_outflows() const {
 //		return U_out;
 //	}
-	std::vector<std::pair<std::string,real>> get_outflows() const;
-	void set_outflows(std::vector<std::pair<std::string,real>>&& u);
+	oct::vector<std::pair<std::string,real>> get_outflows() const;
+	void set_outflows(oct::vector<std::pair<std::string,real>>&& u);
 	void set_outflow(std::pair<std::string,real>&& u);
-	void set_outflows(std::vector<real>&& u) {
+	void set_outflows(oct::vector<real>&& u) {
 		U_out = std::move(u);
 	}
-	std::vector<real> get_outflows_raw() {
+	oct::vector<real> get_outflows_raw() {
 		return U_out;
 	}
 	void set_root(bool flag = true) {
@@ -267,29 +267,29 @@ public:
 	static void set_omega(real, bool bcast = true);
 	static real& get_omega();
 	line_of_centers_t line_of_centers(const std::pair<space_vector, space_vector>& line);
-	void compute_conserved_slopes(const std::array<integer, NDIM> lb = { 1, 1, 1 },
-			const std::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false);
-	void compute_primitive_slopes(real theta, const std::array<integer, NDIM> lb = { 1, 1, 1 },
-			const std::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false);
-	void compute_primitives(const std::array<integer, NDIM> lb = { 1, 1, 1 },
-			const std::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false) const;
+	void compute_conserved_slopes(const oct::array<integer, NDIM> lb = { 1, 1, 1 },
+			const oct::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false);
+	void compute_primitive_slopes(real theta, const oct::array<integer, NDIM> lb = { 1, 1, 1 },
+			const oct::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false);
+	void compute_primitives(const oct::array<integer, NDIM> lb = { 1, 1, 1 },
+			const oct::array<integer, NDIM> ub = { H_NX - 1, H_NX - 1, H_NX - 1 }, bool tau_only = false) const;
 	void set_coordinates();
-	std::vector<real> get_flux_check(const geo::face&);
-	void set_flux_check(const std::vector<real>&, const geo::face&);
-	void set_hydro_boundary(const std::vector<real>&, const geo::direction&, integer width, bool tau_only = false);
-	std::vector<real> get_hydro_boundary(const geo::direction& face, integer width, bool tau_only = false);
+	oct::vector<real> get_flux_check(const geo::face&);
+	void set_flux_check(const oct::vector<real>&, const geo::face&);
+	void set_hydro_boundary(const oct::vector<real>&, const geo::direction&, integer width, bool tau_only = false);
+	oct::vector<real> get_hydro_boundary(const geo::direction& face, integer width, bool tau_only = false);
 	scf_data_t scf_params();
 	real scf_update(real, real, real, real, real, real, real, struct_eos, struct_eos);
-	std::pair<std::vector<real>, std::vector<real> > field_range() const;
+	std::pair<oct::vector<real>, oct::vector<real> > field_range() const;
 	void velocity_inc(const space_vector& dv);
-	std::vector<real> get_restrict() const;
-	std::vector<real> get_flux_restrict(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
+	oct::vector<real> get_restrict() const;
+	oct::vector<real> get_flux_restrict(const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub,
 			const geo::dimension&) const;
-	std::vector<real> get_prolong(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, bool tau_only =
+	oct::vector<real> get_prolong(const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub, bool tau_only =
 			false);
-	void set_prolong(const std::vector<real>&, std::vector<real>&&);
-	void set_restrict(const std::vector<real>&, const geo::octant&);
-	void set_flux_restrict(const std::vector<real>&, const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
+	void set_prolong(const oct::vector<real>&, oct::vector<real>&&);
+	void set_restrict(const oct::vector<real>&, const geo::octant&);
+	void set_flux_restrict(const oct::vector<real>&, const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub,
 			const geo::dimension&);
 	space_vector center_of_mass() const;
 	bool refine_me(integer lev, integer last_ngrids) const;
@@ -305,21 +305,21 @@ public:
 	expansion_pass_type compute_expansions(gsolve_type, const expansion_pass_type* = nullptr);
 	expansion_pass_type compute_expansions_soa(gsolve_type, const expansion_pass_type* = nullptr);
 	integer get_step() const;
-	std::vector<real> conserved_sums(space_vector& com, space_vector& com_dot,
+	oct::vector<real> conserved_sums(space_vector& com, space_vector& com_dot,
 			const std::pair<space_vector, space_vector>& axis, const std::pair<real, real>& l1, integer frac,
 			real rho_cut) const;
-	std::pair<std::vector<real>, std::vector<real>> diagnostic_error() const;
+	std::pair<oct::vector<real>, oct::vector<real>> diagnostic_error() const;
 	void diagnostics();
 	real z_moments(const std::pair<space_vector, space_vector>& axis, const std::pair<real, real>& l1, integer frac,
 			real rho_cut) const;
-	std::vector<real> frac_volumes() const;
+	oct::vector<real> frac_volumes() const;
 	real roche_volume(const std::pair<space_vector, space_vector>& axis, const std::pair<real, real>& l1, real,
 			bool donor) const;
-	std::vector<real> l_sums() const;
-	std::vector<real> gforce_sum(bool torque) const;
-	std::vector<real> conserved_outflows() const;
-	grid(const init_func_type&, real dx, std::array<real, NDIM> xmin);
-	grid(real dx, std::array<real, NDIM>);
+	oct::vector<real> l_sums() const;
+	oct::vector<real> gforce_sum(bool torque) const;
+	oct::vector<real> conserved_outflows() const;
+	grid(const init_func_type&, real dx, oct::array<real, NDIM> xmin);
+	grid(real dx, oct::array<real, NDIM>);
 	grid();
 	~grid() {
 	}
@@ -328,7 +328,7 @@ public:
 	grid& operator=(const grid&) = delete;
 	grid& operator=(grid&&) = default;
 #ifdef FIND_AXIS_V2
-	std::array<std::pair<real, space_vector>,2> find_core_max() const;
+	oct::array<std::pair<real, space_vector>,2> find_core_max() const;
 #else
 	std::pair<space_vector, space_vector> find_axis() const;
 #endif
@@ -336,7 +336,7 @@ public:
 	gravity_boundary_type get_gravity_boundary(const geo::direction& dir, bool is_local);
 	neighbor_gravity_type fill_received_array(neighbor_gravity_type raw_input);
 
-	const std::vector<boundary_interaction_type>& get_ilist_n_bnd(const geo::direction &dir);
+	const oct::vector<boundary_interaction_type>& get_ilist_n_bnd(const geo::direction &dir);
 	void allocate();
 	void reconstruct();
 	void store();
@@ -355,7 +355,7 @@ public:
 	;
 	std::pair<real, real> virial() const;
 
-	std::vector<silo_var_t> var_data() const;
+	oct::vector<silo_var_t> var_data() const;
 	void set(const std::string name, real* data);
 	friend class node_server;
 };

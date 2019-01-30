@@ -11,7 +11,7 @@
 #include <hpx/include/lcos.hpp>
 
 #include <array>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 template <class T>
 using future = hpx::future<T>;

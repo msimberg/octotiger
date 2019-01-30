@@ -13,7 +13,7 @@
 
 #include <array>
 #include <memory>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
@@ -25,12 +25,12 @@ namespace fmm {
         public:
             multipole_interaction_interface(void);
             /// Takes AoS data, converts it, calculates FMM interactions, stores results in L, L_c
-            void compute_multipole_interactions(std::vector<real>& monopoles,
-                std::vector<multipole>& M_ptr,
-                std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr,
-                std::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
-                std::array<bool, geo::direction::count()>& is_direction_empty,
-                std::array<real, NDIM> xbase);
+            void compute_multipole_interactions(oct::vector<real>& monopoles,
+                oct::vector<multipole>& M_ptr,
+                oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr,
+                oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
+                oct::array<bool, geo::direction::count()>& is_direction_empty,
+                oct::array<real, NDIM> xbase);
             /// Sets the grid pointer - usually only required once
             void set_grid_ptr(std::shared_ptr<grid> ptr) {
                 grid_ptr = ptr;
@@ -40,16 +40,16 @@ namespace fmm {
             /// Converts AoS input data into SoA data
             template <typename monopole_container, typename expansion_soa_container,
                 typename masses_soa_container>
-            void update_input(std::vector<real>& monopoles, std::vector<multipole>& M_ptr,
-                std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr,
-                std::vector<neighbor_gravity_type>& neighbors, gsolve_type t, real dx,
-                std::array<real, NDIM> xbase, monopole_container& local_monopoles,
+            void update_input(oct::vector<real>& monopoles, oct::vector<multipole>& M_ptr,
+                oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr,
+                oct::vector<neighbor_gravity_type>& neighbors, gsolve_type t, real dx,
+                oct::array<real, NDIM> xbase, monopole_container& local_monopoles,
                 expansion_soa_container& local_expansions_SoA,
                 masses_soa_container& center_of_masses_SoA);
             /// Calls FMM kernels with SoA data (assumed to be stored in the static members)
-            void compute_interactions(std::array<bool, geo::direction::count()>& is_direction_empty,
-                std::vector<neighbor_gravity_type>& all_neighbor_interaction_data,
-                const std::vector<real>& local_monopoles,
+            void compute_interactions(oct::array<bool, geo::direction::count()>& is_direction_empty,
+                oct::vector<neighbor_gravity_type>& all_neighbor_interaction_data,
+                const oct::vector<real>& local_monopoles,
                 const struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING>&
                     local_expansions_SoA,
                 const struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING>&
@@ -59,14 +59,14 @@ namespace fmm {
             gsolve_type type;
             real dX;
             /// Needed for the center of masses calculation for multipole-monopole interactions
-            std::array<real, NDIM> xBase;
+            oct::array<real, NDIM> xBase;
             std::shared_ptr<grid> grid_ptr;
             /// Option whether SoA Kernels should be called or the old AoS methods
             interaction_kernel_type m2m_type;
 
         private:
             /// SoA conversion area - used as input for compute_interactions
-            static thread_local std::vector<real> local_monopoles_staging_area;
+            static thread_local oct::vector<real> local_monopoles_staging_area;
             /// SoA conversion area - used as input for compute_interactions
             static thread_local struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING>
                 local_expansions_staging_area;
@@ -76,23 +76,23 @@ namespace fmm {
         public:
             /// Stencil for stencil based FMM kernels
             static thread_local const two_phase_stencil stencil;
-            static thread_local const std::vector<bool> stencil_masks;
-            static thread_local const std::vector<bool> inner_stencil_masks;
+            static thread_local const oct::vector<bool> stencil_masks;
+            static thread_local const oct::vector<bool> inner_stencil_masks;
         };
 
         template <typename monopole_container, typename expansion_soa_container,
             typename masses_soa_container>
-        void multipole_interaction_interface::update_input(std::vector<real>& monopoles,
-            std::vector<multipole>& M_ptr,
-            std::vector<std::shared_ptr<std::vector<space_vector>>>& com_ptr,
-            std::vector<neighbor_gravity_type>& neighbors, gsolve_type t, real dx,
-            std::array<real, NDIM> xbase, monopole_container& local_monopoles,
+        void multipole_interaction_interface::update_input(oct::vector<real>& monopoles,
+            oct::vector<multipole>& M_ptr,
+            oct::vector<std::shared_ptr<oct::vector<space_vector>>>& com_ptr,
+            oct::vector<neighbor_gravity_type>& neighbors, gsolve_type t, real dx,
+            oct::array<real, NDIM> xbase, monopole_container& local_monopoles,
             expansion_soa_container& local_expansions_SoA,
             masses_soa_container& center_of_masses_SoA) {
             type = t;
             dX = dx;
             xBase = xbase;
-            std::vector<space_vector> const& com0 = *(com_ptr[0]);
+            oct::vector<space_vector> const& com0 = *(com_ptr[0]);
 
             iterate_inner_cells_padded([M_ptr, com0, &local_expansions_SoA, &center_of_masses_SoA,
                 &local_monopoles](const multiindex<>& i, const size_t flat_index,
@@ -122,8 +122,8 @@ namespace fmm {
                                 local_monopoles.at(flat_index) = 0.0;
                             });
                     } else {
-                        std::vector<multipole>& neighbor_M_ptr = *(neighbor.data.M);
-                        std::vector<space_vector>& neighbor_com0 = *(neighbor.data.x);
+                        oct::vector<multipole>& neighbor_M_ptr = *(neighbor.data.M);
+                        oct::vector<space_vector>& neighbor_com0 = *(neighbor.data.x);
                         const bool fullsizes = neighbor_M_ptr.size() == INNER_CELLS &&
                             neighbor_com0.size() == INNER_CELLS;
                         if (fullsizes) {
@@ -191,7 +191,7 @@ namespace fmm {
                             });
                     } else {
                         // Get multipole data into our input structure
-                        std::vector<real>& neighbor_mons = *(neighbor.data.m);
+                        oct::vector<real>& neighbor_mons = *(neighbor.data.m);
                         const bool fullsizes = neighbor_mons.size() == INNER_CELLS;
                         if (fullsizes) {
                             iterate_inner_cells_padding(

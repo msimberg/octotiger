@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include "octotiger/debug_vector.hpp"
 
 struct profiler_register {
 	profiler_register(const char*, int);
@@ -89,7 +90,7 @@ struct timings
         std::cout << "   Find Localities: "   << times_[time_find_localities] << '\n';
     }
 
-    std::array<double, timer::time_last> times_;
+    oct::array<double, timer::time_last> times_;
 };
 
 #define PROFILE_OFF

@@ -87,7 +87,7 @@ future<hpx::id_type> node_server::copy_to_locality(const hpx::id_type& id) {
 
 	node_registry::delete_(my_location);
 
-	std::vector<hpx::id_type> cids;
+	oct::vector<hpx::id_type> cids;
 	if (is_refined) {
 		cids.resize(NCHILD);
 		for (auto& ci : geo::octant::full_set()) {
@@ -271,15 +271,15 @@ diagnostics_t node_server::local_diagnostics(const diagnostics_t& diags)  {
 typedef node_server::force_nodes_to_exist_action force_nodes_to_exist_action_type;
 HPX_REGISTER_ACTION (force_nodes_to_exist_action_type);
 
-future<void> node_client::force_nodes_to_exist(std::vector<node_location>&& locs) const {
+future<void> node_client::force_nodes_to_exist(oct::vector<node_location>&& locs) const {
 	return hpx::async<typename node_server::force_nodes_to_exist_action>(get_unmanaged_gid(), std::move(locs));
 }
 
-void node_server::force_nodes_to_exist(std::vector<node_location>&& locs) {
-	std::vector<future<void>> futs;
-	std::vector<node_location> parent_list;
-	std::array<std::vector<node_location>,geo::direction::count()> sibling_lists;
-	std::vector<std::vector<node_location>> child_lists(NCHILD);
+void node_server::force_nodes_to_exist(oct::vector<node_location>&& locs) {
+	oct::vector<future<void>> futs;
+	oct::vector<node_location> parent_list;
+	oct::array<oct::vector<node_location>,geo::direction::count()> sibling_lists;
+	oct::vector<oct::vector<node_location>> child_lists(NCHILD);
 
 	futs.reserve(geo::octant::count() + 2);
 	parent_list.reserve(locs.size());
@@ -344,7 +344,7 @@ void node_server::force_nodes_to_exist(std::vector<node_location>&& locs) {
 typedef node_server::form_tree_action form_tree_action_type;
 HPX_REGISTER_ACTION (form_tree_action_type);
 
-future<void> node_client::form_tree(hpx::id_type&& id1, hpx::id_type&& id2, std::vector<hpx::id_type>&& ids) {
+future<void> node_client::form_tree(hpx::id_type&& id1, hpx::id_type&& id2, oct::vector<hpx::id_type>&& ids) {
 	return hpx::async<typename node_server::form_tree_action>(get_unmanaged_gid(), std::move(id1), std::move(id2), std::move(ids));
 }
 
@@ -354,7 +354,7 @@ bool operator!=( const node_client& nc, const hpx::id_type& id) {
 }
 
 
-void node_server::form_tree(hpx::id_type self_gid, hpx::id_type parent_gid, std::vector<hpx::id_type> neighbor_gids) {
+void node_server::form_tree(hpx::id_type self_gid, hpx::id_type parent_gid, oct::vector<hpx::id_type> neighbor_gids) {
 
 
 	std::fill(nieces.begin(), nieces.end(), 0);
@@ -397,7 +397,7 @@ void node_server::form_tree(hpx::id_type self_gid, hpx::id_type parent_gid, std:
 					}
                     cfuts[index++] = hpx::dataflow(hpx::launch::sync,
 					    [this, ci](std::array<future<hpx::id_type>, geo::direction::count()>&& cns) {
-                            std::vector<hpx::id_type> child_neighbors(geo::direction::count());
+                            oct::vector<hpx::id_type> child_neighbors(geo::direction::count());
                             for (auto& dir : geo::direction::full_set()) {
                                 child_neighbors[dir] = GET(cns[dir]);
                                 amr_flags[ci][dir] = bool(child_neighbors[dir] == hpx::invalid_id);
@@ -413,7 +413,7 @@ void node_server::form_tree(hpx::id_type self_gid, hpx::id_type parent_gid, std:
 			GET(f);
 		}
 	} else {
-		std::vector<future<void>> nfuts;
+		oct::vector<future<void>> nfuts;
 		nfuts.reserve(NFACE);
 		for (auto& f : geo::face::full_set()) {
 			const auto& neighbor = neighbors[f.to_direction()];

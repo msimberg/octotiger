@@ -15,12 +15,12 @@
 
 #include <cmath>
 
-std::vector<real> sod_shock_tube_init(real x, real y, real z, real ) {
+oct::vector<real> sod_shock_tube_init(real x, real y, real z, real ) {
 	return sod_shock_tube_analytic(x,y,z,0.0);
 }
 
-std::vector<real> sod_shock_tube_analytic(real x0, real y, real z, real t) {
-	std::vector<real> U(opts().n_fields, 0.0);
+oct::vector<real> sod_shock_tube_analytic(real x0, real y, real z, real t) {
+	oct::vector<real> U(opts().n_fields, 0.0);
 	const real fgamma = grid::get_fgamma();
 	sod_state_t s;
 	real x = (x0 + y + z) / std::sqrt(3.0);

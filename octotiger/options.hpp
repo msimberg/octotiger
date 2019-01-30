@@ -17,7 +17,7 @@
 
 #include <cstddef>
 #include <string>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 COMMAND_LINE_ENUM(problem_type,DWD,SOD,BLAST,NONE,SOLID_SPHERE,STAR,MOVING_STAR,RADIATION_TEST,ROTATING_STAR,MARSHAK);
 

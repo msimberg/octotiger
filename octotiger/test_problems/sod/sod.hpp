@@ -10,10 +10,10 @@
 
 #include "octotiger/real.hpp"
 
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
-std::vector<real> sod_shock_tube_init(real x0, real y, real z, real);
-std::vector<real> sod_shock_tube_analytic(real x0, real y, real z, real);
+oct::vector<real> sod_shock_tube_init(real x0, real y, real z, real);
+oct::vector<real> sod_shock_tube_analytic(real x0, real y, real z, real);
 
 
 #endif /* ROTATING_STAR_ROTATING_STAR_HPP_ */

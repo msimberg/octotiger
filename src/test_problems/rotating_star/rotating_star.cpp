@@ -13,12 +13,12 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 class rotating_star_analytic {
 private:
-	std::vector<std::vector<double>> rho_;
-	std::vector<std::vector<double>> ene_;
+	oct::vector<oct::vector<double>> rho_;
+	oct::vector<oct::vector<double>> ene_;
 	double dr_, dz_, omega_;
 	int nr_, nz_;
 	static constexpr real coeff[16][16] = { { 0.00390625000000, -0.0351562500000, -0.0351562500000, 0.00390625000000,
@@ -65,7 +65,7 @@ private:
 			-0.00130208333333, 0.00390625000000, -0.00390625000000, 0.00130208333333, 0.00130208333333, -0.00390625000000,
 			0.00390625000000, -0.00130208333333, -0.000434027777778, 0.00130208333333, -0.00130208333333, 0.000434027777778 } };
 public:
-	double interpolate(const std::vector<std::vector<double>>& f, double R, double z) const {
+	double interpolate(const oct::vector<oct::vector<double>>& f, double R, double z) const {
 		R = std::abs(R);
 		z = std::abs(z);
 		int i = int(R / dr_) + nr_ / 2 - 1;
@@ -102,8 +102,8 @@ public:
 		nr_ *= 2;
 		nz_ *= 2;
 		fp.read((char*) &omega_, sizeof(double));
-		rho_.resize(nr_, std::vector<double>(nz_));
-		ene_.resize(nr_, std::vector<double>(nz_));
+		rho_.resize(nr_, oct::vector<double>(nz_));
+		ene_.resize(nr_, oct::vector<double>(nz_));
 		for (int i = 0; i < nr_; i++) {
 			for (int k = 0; k < nz_; k++) {
 				fp.read((char*) &(rho_[i][k]), sizeof(double));
@@ -121,8 +121,8 @@ public:
 
 };
 
-std::vector<real> rotating_star(real x, real y, real z, real) {
-	std::vector<real> u(opts().n_fields, real(0));
+oct::vector<real> rotating_star(real x, real y, real z, real) {
+	oct::vector<real> u(opts().n_fields, real(0));
 	static rotating_star_analytic rs;
 	const real fgamma = 5.0 / 3.0;
 	rs.state_at(u[rho_i], u[egas_i], u[sx_i], u[sy_i], x, y, z);
@@ -137,7 +137,7 @@ std::vector<real> rotating_star(real x, real y, real z, real) {
 	return u;
 }
 
-std::vector<real> rotating_star_a(real x, real y, real z, real) {
+oct::vector<real> rotating_star_a(real x, real y, real z, real) {
 	return rotating_star(x, y, z, 0);
 }
 

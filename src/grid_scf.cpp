@@ -668,10 +668,10 @@ void node_server::run_scf(std::string const& data_dir) {
 	}
 }
 
-std::vector<real> scf_binary(real x, real y, real z, real dx) {
+oct::vector<real> scf_binary(real x, real y, real z, real dx) {
 
 	const real fgamma = grid::get_fgamma();
-	std::vector<real> u(opts().n_fields, real(0));
+	oct::vector<real> u(opts().n_fields, real(0));
 	static auto& params = initial_params();
 	if( !opts().restart_filename.empty() ) {
 		return u;

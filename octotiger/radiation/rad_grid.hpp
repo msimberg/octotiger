@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <string>
 #include <unordered_map>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 #define R_BW 3
 #define R_NX (INX+2*R_BW)
@@ -40,19 +40,19 @@ private:
 	static std::unordered_map<std::string, int> str_to_index;
 	static std::unordered_map<int, std::string> index_to_str;
 	real dx;
-	std::array<std::vector<real>, NRF> U;
-	std::array<std::vector<real>, NRF> U0;
-	std::array<std::array<std::vector<real>, NRF>,NDIM> flux;
-	std::array<std::array<std::vector<real>*, NDIM>, NDIM> P;
-	std::vector<std::vector<real>> X;
-	std::vector<real> mmw, X_spc, Z_spc;
-	void reconstruct(std::array<std::vector<real>, NRF>&,std::array<std::vector<real>, NRF>&,int dir);
+	oct::array<oct::vector<real>, NRF> U;
+	oct::array<oct::vector<real>, NRF> U0;
+	oct::array<oct::array<oct::vector<real>, NRF>,NDIM> flux;
+	oct::array<oct::array<oct::vector<real>*, NDIM>, NDIM> P;
+	oct::vector<oct::vector<real>> X;
+	oct::vector<real> mmw, X_spc, Z_spc;
+	void reconstruct(oct::array<oct::vector<real>, NRF>&,oct::array<oct::vector<real>, NRF>&,int dir);
 public:
 	static void static_init();
-	static std::vector<std::string> get_field_names();
+	static oct::vector<std::string> get_field_names();
 	void set(const std::string name, real* data);
-	std::vector<silo_var_t> var_data() const;
-	void set_X( const std::vector<std::vector<real>>& x );
+	oct::vector<silo_var_t> var_data() const;
+	void set_X( const oct::vector<oct::vector<real>>& x );
 	void restore();
 	void store();
 
@@ -61,37 +61,37 @@ public:
 		arc & dx;
 		arc & U;
 	}
-	void compute_mmw(const std::vector<std::vector<real>>& U);
+	void compute_mmw(const oct::vector<oct::vector<real>>& U);
 	void change_units(real m, real l, real t, real k);
 	real rad_imp_comoving(real& E, real& e, real rho, real mmw, real X, real Z, real dt);
 	void sanity_check();
-	void initialize_erad(const std::vector<real> rho, const std::vector<real> tau);
+	void initialize_erad(const oct::vector<real> rho, const oct::vector<real> tau);
 	void set_dx(real dx);
 	//void compute_fEdd();
 	void compute_flux();
 	void advance(real dt, real beta);
-	void rad_imp(std::vector<real>& egas, std::vector<real>& tau, std::vector<real>& sx, std::vector<real>& sy, std::vector<real>& sz,
-			const std::vector<real>& rho, real dt);
-	std::vector<real> get_restrict() const;
-	std::vector<real> get_prolong(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub);
-	void set_prolong(const std::vector<real>&);
-	void set_restrict(const std::vector<real>&, const geo::octant&);
-	void set_flux_restrict(const std::vector<real>& data, const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
+	void rad_imp(oct::vector<real>& egas, oct::vector<real>& tau, oct::vector<real>& sx, oct::vector<real>& sy, oct::vector<real>& sz,
+			const oct::vector<real>& rho, real dt);
+	oct::vector<real> get_restrict() const;
+	oct::vector<real> get_prolong(const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub);
+	void set_prolong(const oct::vector<real>&);
+	void set_restrict(const oct::vector<real>&, const geo::octant&);
+	void set_flux_restrict(const oct::vector<real>& data, const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub,
 			const geo::dimension& dim);
-	std::vector<real> get_flux_restrict(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, const geo::dimension& dim) const;
-	std::vector<real> get_intensity(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, const geo::octant&);
+	oct::vector<real> get_flux_restrict(const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub, const geo::dimension& dim) const;
+	oct::vector<real> get_intensity(const oct::array<integer, NDIM>& lb, const oct::array<integer, NDIM>& ub, const geo::octant&);
 	void allocate();
 	rad_grid(real dx);
 	rad_grid();
-	void set_boundary(const std::vector<real>& data, const geo::direction& dir);
+	void set_boundary(const oct::vector<real>& data, const geo::direction& dir);
 	real get_field(integer f, integer i, integer j, integer k) const;
 	void set_field(real v, integer f, integer i, integer j, integer k);
 	void set_physical_boundaries(geo::face f, real t);
-	std::vector<real> get_boundary(const geo::direction& dir);
+	oct::vector<real> get_boundary(const geo::direction& dir);
 	using kappa_type = std::function<real(real)>;
 
-	real hydro_signal_speed(const std::vector<real>& egas, const std::vector<real>& tau, const std::vector<real>& sx, const std::vector<real>& sy, const std::vector<real>& sz,
-			const std::vector<real>& rho);
+	real hydro_signal_speed(const oct::vector<real>& egas, const oct::vector<real>& tau, const oct::vector<real>& sx, const oct::vector<real>& sy, const oct::vector<real>& sz,
+			const oct::vector<real>& rho);
 
 	friend class node_server;
 };

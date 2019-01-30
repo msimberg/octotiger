@@ -28,7 +28,7 @@
 #include <array>
 #include <chrono>
 #include <fstream>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 typedef node_server::regrid_gather_action regrid_gather_action_type;
 HPX_REGISTER_ACTION(regrid_gather_action_type);
@@ -97,21 +97,21 @@ future<hpx::id_type> node_server::create_child(hpx::id_type const& locality, int
 		hpx::id_type child_id = child_idf.get();
 		node_client child = child_id;
 		{
-			std::array<integer, NDIM> lb = {2 * H_BW, 2 * H_BW, 2 * H_BW};
-			std::array<integer, NDIM> ub;
+			oct::array<integer, NDIM> lb = {2 * H_BW, 2 * H_BW, 2 * H_BW};
+			oct::array<integer, NDIM> ub;
 			lb[XDIM] += (1 & (ci >> 0)) * (INX);
 			lb[YDIM] += (1 & (ci >> 1)) * (INX);
 			lb[ZDIM] += (1 & (ci >> 2)) * (INX);
 			for (integer d = 0; d != NDIM; ++d) {
 				ub[d] = lb[d] + (INX);
 			}
-			std::vector<real> outflows(opts().n_fields, ZERO);
+			oct::vector<real> outflows(opts().n_fields, ZERO);
 			if (ci == 0) {
 				outflows = grid_ptr->get_outflows_raw();
 			}
 			if (current_time > ZERO)
 			{
-				std::vector<real> prolong;
+				oct::vector<real> prolong;
 				{
 					std::unique_lock<hpx::lcos::local::spinlock> lk(prolong_mtx);
 					prolong = grid_ptr->get_prolong(lb, ub);
@@ -120,20 +120,20 @@ future<hpx::id_type> node_server::create_child(hpx::id_type const& locality, int
 			}
 		}
 		if( opts().radiation ) {
-			std::array<integer, NDIM> lb = {2 * R_BW, 2 * R_BW, 2 * R_BW};
-			std::array<integer, NDIM> ub;
+			oct::array<integer, NDIM> lb = {2 * R_BW, 2 * R_BW, 2 * R_BW};
+			oct::array<integer, NDIM> ub;
 			lb[XDIM] += (1 & (ci >> 0)) * (INX);
 			lb[YDIM] += (1 & (ci >> 1)) * (INX);
 			lb[ZDIM] += (1 & (ci >> 2)) * (INX);
 			for (integer d = 0; d != NDIM; ++d) {
 				ub[d] = lb[d] + (INX);
 			}
-			/*	std::vector<real> outflows(NF, ZERO);
+			/*	oct::vector<real> outflows(NF, ZERO);
 			 if (ci == 0) {
 			 outflows = grid_ptr->get_outflows();
 			 }*/
 			if (current_time > ZERO) {
-				std::vector<real> prolong;
+				oct::vector<real> prolong;
 				{
 					std::unique_lock<hpx::lcos::local::spinlock> lk(prolong_mtx);
 					prolong = rad_grid_ptr->get_prolong(lb, ub);
@@ -247,11 +247,11 @@ void node_server::set_aunt(const hpx::id_type& aunt, const geo::face& face) {
 typedef node_server::set_grid_action set_grid_action_type;
 HPX_REGISTER_ACTION(set_grid_action_type);
 
-future<void> node_client::set_grid(std::vector<real>&& g, std::vector<real>&& o) const {
+future<void> node_client::set_grid(oct::vector<real>&& g, oct::vector<real>&& o) const {
 	return hpx::async<typename node_server::set_grid_action>(get_unmanaged_gid(), std::move(g), std::move(o));
 }
 
-void node_server::set_grid(const std::vector<real>& data, std::vector<real>&& outflows) {
+void node_server::set_grid(const oct::vector<real>& data, oct::vector<real>&& outflows) {
 	grid_ptr->set_prolong(data, std::move(outflows));
 }
 

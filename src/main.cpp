@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <string>
 #include <utility>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 #include <fenv.h>
 #if !defined(_MSC_VER)
@@ -32,7 +32,7 @@ void normalize_constants();
 
 void compute_ilist();
 
-void initialize(options _opts, std::vector<hpx::id_type> const& localities) {
+void initialize(options _opts, oct::vector<hpx::id_type> const& localities) {
 	options::all_localities = localities;
 	opts() = _opts;
 	grid::get_omega() = opts().omega;
@@ -142,7 +142,7 @@ int hpx_main(int argc, char* argv[]) {
 
 	try {
 		if (opts().process_options(argc, argv)) {
-			auto all_locs = hpx::find_all_localities();
+			auto all_locs = oct::vector<hpx::id_type>(hpx::find_all_localities());
 			hpx::lcos::broadcast<initialize_action>(all_locs, opts(), all_locs).get();
 
 			hpx::id_type root_id = hpx::new_<node_server>(hpx::find_here()).get();
@@ -181,7 +181,7 @@ int hpx_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-	std::vector<std::string> cfg = { "hpx.commandline.allow_unknown=1", // HPX should not complain about unknown command line options
+	oct::vector<std::string> cfg = { "hpx.commandline.allow_unknown=1", // HPX should not complain about unknown command line options
 			"hpx.scheduler=local-priority-lifo",       // use LIFO scheduler by default
 			"hpx.parcel.mpi.zero_copy_optimization!=0" // Disable the usage of zero copy optimization for MPI...
 			};

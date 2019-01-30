@@ -7,20 +7,20 @@
 
 #include <algorithm>
 #include <array>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 namespace octotiger {
 namespace fmm {
     namespace monopole_interactions {
-        const thread_local std::vector<multiindex<>> p2p_interaction_interface::stencil =
+        const thread_local oct::vector<multiindex<>> p2p_interaction_interface::stencil =
             calculate_stencil().first;
-        const thread_local std::vector<bool> p2p_interaction_interface::stencil_masks =
+        const thread_local oct::vector<bool> p2p_interaction_interface::stencil_masks =
             calculate_stencil_masks(p2p_interaction_interface::stencil).first;
-        const thread_local std::vector<std::array<real, 4>> p2p_interaction_interface::four =
+        const thread_local oct::vector<oct::array<real, 4>> p2p_interaction_interface::four =
             calculate_stencil().second;
-        const thread_local std::vector<std::array<real, 4>> p2p_interaction_interface::stencil_four_constants =
+        const thread_local oct::vector<oct::array<real, 4>> p2p_interaction_interface::stencil_four_constants =
             calculate_stencil_masks(p2p_interaction_interface::stencil).second;
-        thread_local std::vector<real> p2p_interaction_interface::local_monopoles_staging_area(
+        thread_local oct::vector<real> p2p_interaction_interface::local_monopoles_staging_area(
             ENTRIES);
 
         p2p_interaction_interface::p2p_interaction_interface(void)
@@ -29,16 +29,16 @@ namespace fmm {
             this->p2p_type = opts().p2p_kernel_type;
         }
 
-        void p2p_interaction_interface::compute_p2p_interactions(std::vector<real>& monopoles,
-            std::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
-            std::array<bool, geo::direction::count()>& is_direction_empty) {
+        void p2p_interaction_interface::compute_p2p_interactions(oct::vector<real>& monopoles,
+            oct::vector<neighbor_gravity_type>& neighbors, gsolve_type type, real dx,
+            oct::array<bool, geo::direction::count()>& is_direction_empty) {
             update_input(monopoles, neighbors, type, local_monopoles_staging_area);
             compute_interactions(type, is_direction_empty, neighbors, dx);
         }
 
         void p2p_interaction_interface::compute_interactions(gsolve_type type,
-            std::array<bool, geo::direction::count()>& is_direction_empty,
-            std::vector<neighbor_gravity_type>& all_neighbor_interaction_data, real dx) {
+            oct::array<bool, geo::direction::count()>& is_direction_empty,
+            oct::vector<neighbor_gravity_type>& all_neighbor_interaction_data, real dx) {
             if (p2p_type == interaction_kernel_type::SOA_CPU) {
                 struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING>
                     potential_expansions_SoA;

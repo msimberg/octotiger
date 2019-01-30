@@ -16,7 +16,7 @@
 
 #include <array>
 #include <limits>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 struct diagnostics_t {
 	static constexpr integer nspec = 2;
@@ -46,7 +46,7 @@ struct diagnostics_t {
 	real rho_max[nspec];
 	hydro_state_t<> grid_sum;
 	hydro_state_t<> grid_out;
-	std::array<real,NDIM> lsum;
+	oct::array<real,NDIM> lsum;
 	diagnostics_t() {
 		stage = 1;
 		omega = -1.0;

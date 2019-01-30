@@ -3,7 +3,7 @@
 
 #include <cstdio>
 #include <mutex>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
 static const auto& localities = options::all_localities;
 

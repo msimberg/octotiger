@@ -12,7 +12,9 @@
 #include <cstdio>
 #include <cstdlib>
 
-//#define SAFE_MATH_ON
+#ifndef NDEBUG
+#define SAFE_MATH_ON
+#endif
 
 template<class T, class U>
 inline T safe_power(const T& a, const U& b, const char* file, const int line) {

@@ -12,17 +12,17 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
+#include <octotiger/debug_vector.hpp>
 
-typedef std::pair<std::vector<multipole>, std::vector<space_vector>> multipole_pass_type;
-typedef std::pair<std::vector<expansion>, std::vector<space_vector>> expansion_pass_type;
+typedef std::pair<oct::vector<multipole>, oct::vector<space_vector>> multipole_pass_type;
+typedef std::pair<oct::vector<expansion>, oct::vector<space_vector>> expansion_pass_type;
 using semaphore = hpx::lcos::local::counting_semaphore;
 
 struct gravity_boundary_type
 {
-    std::shared_ptr<std::vector<multipole>> M;
-    std::shared_ptr<std::vector<real>> m;
-    std::shared_ptr<std::vector<space_vector>> x;
+    std::shared_ptr<oct::vector<multipole>> M;
+    std::shared_ptr<oct::vector<real>> m;
+    std::shared_ptr<oct::vector<space_vector>> x;
     semaphore* local_semaphore;
     gravity_boundary_type()
       : M(nullptr)
@@ -31,9 +31,9 @@ struct gravity_boundary_type
     void allocate() {
         local_semaphore = nullptr;
         if (M == nullptr) {
-            M = std::make_shared<std::vector<multipole>>();
-            m = std::make_shared<std::vector<real>>();
-            x = std::make_shared<std::vector<space_vector>>();
+            M = std::make_shared<oct::vector<multipole>>();
+            m = std::make_shared<oct::vector<real>>();
+            x = std::make_shared<oct::vector<space_vector>>();
         }
     }
     template <class Archive>
@@ -118,12 +118,12 @@ Vc_DECLARE_ALLOCATOR(interaction_type)
 struct boundary_interaction_type
 {
     // // all interaction partners, if first.size() == 1, else the current index
-    // std::vector<std::uint16_t> second;
+    // oct::vector<std::uint16_t> second;
     std::uint16_t second;
     // all interaction partners, if second.size() == 1, else the current index
-    std::vector<std::uint16_t> first;
+    oct::vector<std::uint16_t> first;
     // precomputed values, as in interaction_type
-    std::vector<v4sd> four;
+    oct::vector<v4sd> four;
     // index vector in cell
     space_vector x;
 };

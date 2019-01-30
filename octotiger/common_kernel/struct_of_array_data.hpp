@@ -12,7 +12,7 @@ namespace fmm {
 
     // component type has to be indexable, and has to have a size() operator
     template <typename AoS_type, typename component_type, size_t num_components, size_t entries,
-        size_t padding, typename backend_t = std::vector<component_type>>
+        size_t padding, typename backend_t = oct::vector<component_type>>
     class struct_of_array_data
     {
     private:
@@ -56,7 +56,7 @@ namespace fmm {
             }
         }
 
-        struct_of_array_data(const std::vector<AoS_type>& org)
+        struct_of_array_data(const oct::vector<AoS_type>& org)
           : data(num_components * padded_entries_per_component) {
             for (size_t component = 0; component < num_components; component++) {
                 for (size_t entry = 0; entry < org.size(); entry++) {
@@ -80,7 +80,7 @@ namespace fmm {
         struct_of_array_data& operator=(const struct_of_array_data& other) = delete;
 
         // write back into non-SoA style array
-        void to_non_SoA(std::vector<AoS_type>& org) {
+        void to_non_SoA(oct::vector<AoS_type>& org) {
             // constexpr size_t padded_entries_per_component = entries + padding;
             for (size_t component = 0; component < num_components; component++) {
                 for (size_t entry = 0; entry < org.size(); entry++) {
@@ -88,7 +88,7 @@ namespace fmm {
                 }
             }
         }
-        void add_to_non_SoA(std::vector<AoS_type>& org) {
+        void add_to_non_SoA(oct::vector<AoS_type>& org) {
             // constexpr size_t padded_entries_per_component = entries + padding;
             for (size_t component = 0; component < num_components; component++) {
                 for (size_t entry = 0; entry < org.size(); entry++) {
