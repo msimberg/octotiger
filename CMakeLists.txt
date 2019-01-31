@@ -28,7 +28,7 @@ option(OCTOTIGER_WITH_QUADMATH "Enable sections using GCC Quad-Precision Math Li
 ################################################################################
 find_package(HPX REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 find_package(Silo REQUIRED)
-find_package(Vc REQUIRED)
+#find_package(Vc REQUIRED)
 find_package(Boost REQUIRED)
 if(NOT MSVC)
   find_package(Threads REQUIRED)
@@ -168,7 +168,7 @@ set(header_files
 add_hpx_executable(
   octotiger
   DEPENDENCIES
-    Silo::silo Vc::Vc Boost::boost
+    Silo::silo Boost::boost  #Vc::Vc
   SOURCES
     ${source_files}
   HEADERS
@@ -215,19 +215,19 @@ else()
   endif()
 endif()
 
-if(USE_AVX2)
-  if(MSVC)
-    target_compile_options(octotiger PRIVATE /arch:AVX2)
-  else()
-    target_compile_options(octotiger PRIVATE -mavx2)
-  endif()
-elseif(USE_AVX)
-  if(MSVC)
-    target_compile_options(octotiger PRIVATE /arch:AVX)
-  else()
-    target_compile_options(octotiger PRIVATE -mavx)
-  endif()
-endif()
+#if(USE_AVX2)
+#  if(MSVC)
+#    target_compile_options(octotiger PRIVATE /arch:AVX2)
+#  else()
+#    target_compile_options(octotiger PRIVATE -mavx2)
+#  endif()
+#elseif(USE_AVX)
+#  if(MSVC)
+#    target_compile_options(octotiger PRIVATE /arch:AVX)
+#  else()
+#    target_compile_options(octotiger PRIVATE -mavx)
+#  endif()
+#endif()
 
 # Handle CUDA
 if(OCTOTIGER_WITH_CUDA)
