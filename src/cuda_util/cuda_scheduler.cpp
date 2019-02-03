@@ -178,7 +178,7 @@ namespace fmm {
                 }
             }
             // continue when all cuda things are handled
-            util::cuda_helper::cuda_error(cudaThreadSynchronize());
+            // util::cuda_helper::cuda_error(cudaThreadSynchronize());
         }
         is_initialized = true;
     }
