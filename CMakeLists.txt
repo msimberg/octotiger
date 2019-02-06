@@ -233,7 +233,7 @@ elseif((OCTOTIGER_WITH_Vc AND USE_AVX) OR OCTOTIGER_WITH_AVX)
   if(MSVC)
     target_compile_options(octotiger PRIVATE /arch:AVX)
   else()
-    target_compile_options(octotiger PRIVATE -mavx)
+    target_compile_options(octotiger PRIVATE -mno-avx)
   endif()
 endif()
 
