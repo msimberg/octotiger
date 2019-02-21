@@ -212,12 +212,14 @@ constexpr inline T cube(T const& val)
     return val * val * val;
 }
 
+//[2,2]
 template <typename T>
 constexpr inline T average(T const& s1, T const& s2)
 {
     return 0.5 * (s1 + s2);
 };
 
+//[2,2]
 template <typename T>
 inline void inplace_average(T& s1, T& s2)
 {
