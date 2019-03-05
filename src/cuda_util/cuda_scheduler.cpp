@@ -212,7 +212,9 @@ namespace octotiger {
                     throw(error.c_str());
                 }
             }
-            // No slots available
+            // TODO Check whether is is a black listed HPX worker: if yes run on GPU
+
+            // Run on CPU
             return -1;
         }
 

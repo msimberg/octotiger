@@ -96,6 +96,18 @@ namespace fmm {
         /// Get a slot on any device to run a FMM kernel. Return -1 for CPU slot, else the slot
         /// ID
         int get_launch_slot(void);
+
+        template <typename Func, typename... Args>
+        hpx::future<void> launch(int slot, Func&& kernel_launcher, Args&&... args) {
+            auto start_future = stream_interfaces[slot].get_future();
+            // Launch new kernel as a continuation
+            auto end_future = start_future.then([&](hpx::future<void> && f) -> void {
+                kernel_launcher(std::forward<Args>(args)..., local_monopole_slots[slot],
+                                local_expansions_slots[slot], center_of_masses_slots[slot],
+                                kernel_device_enviroments[slot], stream_interfaces[slot]);
+                });
+            return end_future;
+        }
         /// Get references to SoA memory for a slot
         kernel_staging_area get_staging_area(size_t slot);
         /// Get references to SoA memory for a slot
