@@ -30,40 +30,35 @@ namespace fmm {
                     monopoles, neighbors, type, dx, is_direction_empty);
             } else {    // run on cuda device
                 cuda_launch_counter++;
-                // Move data into staging arrays
-                auto staging_area = kernel_scheduler::scheduler.get_staging_area(slot);
-                update_input(monopoles, neighbors, type, staging_area.local_monopoles);
+                auto kernel_launcher = [this, &monopoles, &neighbors, &type, dx, &is_direction_empty]
+                       (std::vector<real, cuda_pinned_allocator<real>>& local_monopoles,
+                        struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
+                        std::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA,
+                        struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
+                        std::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA,
+                        kernel_device_enviroment &env, util::cuda_helper& gpu_interface) {
+                    // Move data into staging arrays
+                    update_input(monopoles, neighbors, type, local_monopoles);
 
-                // Queue moving of input data to device
-                util::cuda_helper& gpu_interface =
-                    kernel_scheduler::scheduler.get_launch_interface(slot);
-                kernel_device_enviroment& env =
-                    kernel_scheduler::scheduler.get_device_enviroment(slot);
-                gpu_interface.copy_async(env.device_local_monopoles,
-                    staging_area.local_monopoles.data(), local_monopoles_size,
-                    cudaMemcpyHostToDevice);
+                    // Queue moving of input data to device
+                    gpu_interface.copy_async(env.device_local_monopoles,
+                        staging_area.local_monopoles.data(), local_monopoles_size,
+                        cudaMemcpyHostToDevice);
 
-                // Launch kernel and queue copying of results
-                // const dim3 grid_spec(3);
-                const dim3 grid_spec(INX,1,1);
-                const dim3 threads_per_block(1, INX, INX);
-                // void* args[] = {&(env.device_local_monopoles), &(env.device_blocked_monopoles),
-                //                 &theta, &dx};
-                void* args[] = {&(env.device_local_monopoles), &(env.device_blocked_monopoles),
-                                 &theta, &dx};
-                gpu_interface.execute(
-                    (const void*)&cuda_p2p_interactions_kernel, grid_spec, threads_per_block, args, 0);
-                // void* sum_args[] = {&(env.device_blocked_monopoles)};
-                // const dim3 sum_spec(1);
-                // const dim3 threads(512);
-                // gpu_interface.execute(
-                //     &cuda_add_pot_blocks, sum_spec, threads, sum_args, 0);
-                gpu_interface.copy_async(potential_expansions_SoA.get_pod(),
-                    env.device_blocked_monopoles, potential_expansions_small_size,
-                    cudaMemcpyDeviceToHost);
+                    // Launch kernel and queue copying of results
+                    // const dim3 grid_spec(3);
+                    const dim3 grid_spec(INX,1,1);
+                    const dim3 threads_per_block(1, INX, INX);
+                    void* args[] = {&(env.device_local_monopoles), &(env.device_blocked_monopoles),
+                                    &theta, &dx};
+                    gpu_interface.execute(
+                        (const void*)&cuda_p2p_interactions_kernel, grid_spec, threads_per_block, args, 0);
+                    gpu_interface.copy_async(potential_expansions_SoA.get_pod(),
+                        env.device_blocked_monopoles, potential_expansions_small_size,
+                        cudaMemcpyDeviceToHost);
+                };
 
-                // Wait for stream to finish and allow thread to jump away in the meantime
-                auto fut = gpu_interface.get_future();
+                auto fut = kernel_scheduler::scheduler.launch(slot, kernel_launcher);
                 fut.get();
 
                 // Copy results back into non-SoA array

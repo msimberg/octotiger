@@ -44,59 +44,57 @@ namespace fmm {
                     cuda_launch_counter++;
                 else
                     cuda_launch_counter_non_rho++;
-                // Move data into SoA arrays
-                auto staging_area = kernel_scheduler::scheduler.get_staging_area(slot);
-                update_input(monopoles, M_ptr, com_ptr, neighbors, type, dx, xbase,
-                    staging_area.local_monopoles, staging_area.local_expansions_SoA,
-                    staging_area.center_of_masses_SoA);
 
-                // Queue moving of input data to device
-                util::cuda_helper& gpu_interface = kernel_scheduler::scheduler.get_launch_interface(slot);
-                kernel_device_enviroment& env = kernel_scheduler::scheduler.get_device_enviroment(slot);
-                gpu_interface.copy_async(env.device_local_monopoles,
-                    staging_area.local_monopoles.data(), local_monopoles_size,
-                    cudaMemcpyHostToDevice);
-                gpu_interface.copy_async(env.device_local_expansions,
-                    staging_area.local_expansions_SoA.get_pod(), local_expansions_size,
-                    cudaMemcpyHostToDevice);
-                gpu_interface.copy_async(env.device_center_of_masses,
-                    staging_area.center_of_masses_SoA.get_pod(), center_of_masses_size,
-                    cudaMemcpyHostToDevice);
+                auto kernel_launcher = [this, &monopoles, &neighbors, &type, dx, &is_direction_empty]
+                       (std::vector<real, cuda_pinned_allocator<real>>& local_monopoles,
+                        struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
+                        std::vector<real, cuda_pinned_allocator<real>>>& local_expansions_SoA,
+                        struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
+                        std::vector<real, cuda_pinned_allocator<real>>>& center_of_masses_SoA,
+                        kernel_device_enviroment &env, util::cuda_helper& gpu_interface) {
+                    // Move data into SoA arrays
+                    update_input(monopoles, M_ptr, com_ptr, neighbors, type, dx, xbase,
+                        local_monopoles, local_expansions_SoA,
+                        center_of_masses_SoA);
 
-                // Launch kernel and queue copying of results
-                const dim3 grid_spec(INX, 1, 1);
-                const dim3 threads_per_block(1, INX, INX);
-                if (type == RHO) {
-                    bool second_phase = false;
-                    void* args[] = {&(env.device_local_monopoles), &(env.device_center_of_masses),
-                        &(env.device_local_expansions), &(env.device_potential_expansions),
-                        &(env.device_angular_corrections), &theta, &second_phase};
-                    gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_rho, grid_spec,
-                    threads_per_block, args, 0);
-                    // second_phase = true;
-                    // gpu_interface.execute(&cuda_multipole_interactions_kernel_rho, grid_spec,
-                    //                       threads_per_block, args, 0);
-                    gpu_interface.copy_async(angular_corrections_SoA.get_pod(),
-                                             env.device_angular_corrections, angular_corrections_size,
-                                             cudaMemcpyDeviceToHost);
+                    // Queue moving of input data to device
+                    gpu_interface.copy_async(env.device_local_monopoles,
+                        staging_area.local_monopoles.data(), local_monopoles_size,
+                        cudaMemcpyHostToDevice);
+                    gpu_interface.copy_async(env.device_local_expansions,
+                        staging_area.local_expansions_SoA.get_pod(), local_expansions_size,
+                        cudaMemcpyHostToDevice);
+                    gpu_interface.copy_async(env.device_center_of_masses,
+                        staging_area.center_of_masses_SoA.get_pod(), center_of_masses_size,
+                        cudaMemcpyHostToDevice);
 
-                } else {
-                    bool second_phase = false;
-                    void* args[] = {&(env.device_local_monopoles), &(env.device_center_of_masses),
-                        &(env.device_local_expansions), &(env.device_potential_expansions),
-                        &theta, &second_phase};
-                    gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_non_rho, grid_spec,
+                    // Launch kernel and queue copying of results
+                    const dim3 grid_spec(INX, 1, 1);
+                    const dim3 threads_per_block(1, INX, INX);
+                    if (type == RHO) {
+                        bool second_phase = false;
+                        void* args[] = {&(env.device_local_monopoles), &(env.device_center_of_masses),
+                            &(env.device_local_expansions), &(env.device_potential_expansions),
+                            &(env.device_angular_corrections), &theta, &second_phase};
+                        gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_rho, grid_spec,
                         threads_per_block, args, 0);
-                    // second_phase = true;
-                    // gpu_interface.execute(&cuda_multipole_interactions_kernel_non_rho, grid_spec,
-                    //     threads_per_block, args, 0);
-                }
-                gpu_interface.copy_async(potential_expansions_SoA.get_pod(),
-                    env.device_potential_expansions, potential_expansions_size,
-                    cudaMemcpyDeviceToHost);
+                        gpu_interface.copy_async(angular_corrections_SoA.get_pod(),
+                                                env.device_angular_corrections, angular_corrections_size,
+                                                cudaMemcpyDeviceToHost);
 
-                // Wait for stream to finish and allow thread to jump away in the meantime
-                auto fut = gpu_interface.get_future();
+                    } else {
+                        bool second_phase = false;
+                        void* args[] = {&(env.device_local_monopoles), &(env.device_center_of_masses),
+                            &(env.device_local_expansions), &(env.device_potential_expansions),
+                            &theta, &second_phase};
+                        gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_non_rho, grid_spec,
+                            threads_per_block, args, 0);
+                    }
+                    gpu_interface.copy_async(potential_expansions_SoA.get_pod(),
+                        env.device_potential_expansions, potential_expansions_size,
+                        cudaMemcpyDeviceToHost);
+                }
+                auto fut = kernel_scheduler::scheduler.launch(slot, kernel_launcher);
                 fut.get();
 
                 // Copy results back into non-SoA array

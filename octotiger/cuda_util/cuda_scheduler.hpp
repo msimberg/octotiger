@@ -130,6 +130,7 @@ namespace fmm {
         /// Constructs number of streams indicated by the options
         kernel_scheduler(void);
 
+        size_t round_robin_current;
         /// How many cuda streams does scheduler manage
         size_t number_cuda_streams_managed;
         /// How many slots are there per stram - basically the queue length per stream

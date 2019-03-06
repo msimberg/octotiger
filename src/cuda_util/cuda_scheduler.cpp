@@ -21,7 +21,7 @@ namespace octotiger {
             : number_cuda_streams_managed(0)
             , slots_per_cuda_stream(1)    // Slots (queue per stream) is currently deactived
             , number_slots(number_cuda_streams_managed * slots_per_cuda_stream),
-              is_initialized(false) {
+              is_initialized(false), round_robin_current(0) {
         }
         void kernel_scheduler::init_constants(void)
         {
@@ -213,9 +213,12 @@ namespace octotiger {
                 }
             }
             // TODO Check whether is is a black listed HPX worker: if yes run on GPU
+            size_t slot_id = round_robin_current;
+            round_robin_current = (round_robin_current + 1) % number_cuda_streams_managed;
+            return slot_id;
 
             // Run on CPU
-            return -1;
+            // return -1;
         }
 
         kernel_staging_area kernel_scheduler::get_staging_area(size_t slot) {
