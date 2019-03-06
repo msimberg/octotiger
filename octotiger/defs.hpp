@@ -91,7 +91,7 @@ enum boundary_type {
 
 constexpr integer NDIM = 3;
 
-constexpr integer INX = 8;
+constexpr integer INX = OCTOTIGER_GRIDDIM;
 constexpr integer H_BW = 3;
 constexpr integer R_BW = 2;
 
@@ -116,6 +116,17 @@ constexpr integer G_DNX = G_NX * G_NX;
 constexpr integer G_DNY = G_NX;
 constexpr integer G_DNZ = 1;
 constexpr integer G_DN[NDIM] = { G_NX * G_NX, G_NX, 1 };
+
+// Radiation {{{
+constexpr integer RAD_BW = 3;
+constexpr integer RAD_NX = INX + 2 * RAD_BW;
+constexpr integer RAD_N3 = RAD_NX * RAD_NX * RAD_NX;
+
+constexpr inline integer rindex(integer x, integer y, integer z)
+{
+    return z + RAD_NX * (y + RAD_NX * x);
+}
+// }}}
 
 constexpr integer rho_i = 0;
 constexpr integer egas_i = 1;
@@ -160,7 +171,6 @@ constexpr real HALF = real(real(1) / real(2));
 constexpr real SIXTH = real(real(1) / real(6));
 constexpr real TWELFTH = real(real(1) / real(12));
 
-constexpr real cfl = real(real(2) / real(15));
 constexpr real ei_floor = 1.0e-15;
 constexpr integer NRK = 2;
 constexpr real rk_beta[2] = { ONE, HALF };

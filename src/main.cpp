@@ -13,24 +13,24 @@
 #include "octotiger/monopole_interactions/cuda_p2p_interaction_interface.hpp"
 #include "octotiger/multipole_interactions/cuda_multipole_interaction_interface.hpp"
 #endif
-#include "octotiger/monopole_interactions/p2p_interaction_interface.hpp"
-#include "octotiger/monopole_interactions/p2m_interaction_interface.hpp"
-#include "octotiger/multipole_interactions/multipole_interaction_interface.hpp"
-#include "octotiger/multipole_interactions/calculate_stencil.hpp"
 #include "octotiger/monopole_interactions/calculate_stencil.hpp"
+#include "octotiger/monopole_interactions/p2m_interaction_interface.hpp"
+#include "octotiger/monopole_interactions/p2p_interaction_interface.hpp"
+#include "octotiger/multipole_interactions/calculate_stencil.hpp"
+#include "octotiger/multipole_interactions/multipole_interaction_interface.hpp"
 
 #include <hpx/hpx_init.hpp>
-#include <hpx/include/lcos.hpp>
-#include <hpx/lcos/broadcast.hpp>
 #include <hpx/include/actions.hpp>
+#include <hpx/include/lcos.hpp>
 #include <hpx/include/util.hpp>
+#include <hpx/lcos/broadcast.hpp>
 
 #include <chrono>
 #include <cstdio>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
 
 #include <fenv.h>
 #if !defined(_MSC_VER)
@@ -53,47 +53,51 @@ std::size_t init_thread_local_worker(std::size_t desired)
     if (current == desired)
     {
 #ifdef OCTOTIGER_HAVE_CUDA
-      // init cuda/cpu scheduler
-      octotiger::fmm::kernel_scheduler::scheduler.init();
+        // Initialize CUDA/CPU scheduler
+        octotiger::fmm::kernel_scheduler::scheduler.init();
 #endif
 
-      // init stencil and four constants for p2p fmm interactions
-      octotiger::fmm::monopole_interactions::p2p_interaction_interface::stencil =
-          octotiger::fmm::monopole_interactions::calculate_stencil().first;
-      octotiger::fmm::monopole_interactions::p2p_interaction_interface::stencil_masks =
-          octotiger::fmm::monopole_interactions::calculate_stencil_masks(
-              octotiger::fmm::monopole_interactions::p2p_interaction_interface::stencil).first;
-      octotiger::fmm::monopole_interactions::p2p_interaction_interface::four =
-          octotiger::fmm::monopole_interactions::calculate_stencil().second;
-      octotiger::fmm::monopole_interactions::p2p_interaction_interface::stencil_four_constants =
-          octotiger::fmm::monopole_interactions::calculate_stencil_masks(
-              octotiger::fmm::monopole_interactions::p2p_interaction_interface::stencil).second;
+        namespace mono_inter = octotiger::fmm::monopole_interactions;
+        using mono_inter_p2p =
+            octotiger::fmm::monopole_interactions::p2p_interaction_interface;
+        // Initialize stencil and four constants for p2p fmm interactions
+        mono_inter_p2p::stencil = mono_inter::calculate_stencil().first;
+        mono_inter_p2p::stencil_masks() =
+            mono_inter::calculate_stencil_masks(mono_inter_p2p::stencil).first;
+        mono_inter_p2p::four = mono_inter::calculate_stencil().second;
+        mono_inter_p2p::stencil_four_constants() =
+            mono_inter::calculate_stencil_masks(mono_inter_p2p::stencil).second;
 
-      // init stencil for p2m fmm interactions
-      octotiger::fmm::monopole_interactions::p2m_interaction_interface::stencil =
-          octotiger::fmm::monopole_interactions::calculate_stencil().first;
+        // Initialize stencil for p2m fmm interactions
+        mono_inter::p2m_interaction_interface::stencil =
+            mono_inter::calculate_stencil().first;
 
-      // init stencil for multipole fmm interactions
-      octotiger::fmm::multipole_interactions::multipole_interaction_interface::stencil =
-          octotiger::fmm::multipole_interactions::calculate_stencil();
-      octotiger::fmm::multipole_interactions::multipole_interaction_interface::stencil_masks =
-          octotiger::fmm::multipole_interactions::calculate_stencil_masks(
-              octotiger::fmm::multipole_interactions::multipole_interaction_interface::stencil).first;
-      octotiger::fmm::multipole_interactions::multipole_interaction_interface::inner_stencil_masks =
-          octotiger::fmm::multipole_interactions::calculate_stencil_masks(
-              octotiger::fmm::multipole_interactions::multipole_interaction_interface::stencil).second;
+        namespace multi_inter = octotiger::fmm::multipole_interactions;
+        using multi_inter_p2p = octotiger::fmm::multipole_interactions::
+            multipole_interaction_interface;
+        // Initialize stencil for multipole fmm interactions
+        multi_inter_p2p::stencil = multi_inter::calculate_stencil();
+        multi_inter_p2p::stencil_masks() =
+            multi_inter::calculate_stencil_masks(multi_inter_p2p::stencil)
+                .first;
+        multi_inter_p2p::inner_stencil_masks() =
+            multi_inter::calculate_stencil_masks(multi_inter_p2p::stencil)
+                .second;
 
-      std::cout << "OS-thread " << current << " on locality " <<
-          hpx::get_locality_id << ": thread_local memory has been initialized! \n";
-      return desired;
+        std::cout << "OS-thread " << current << " on locality "
+                  << hpx::get_locality_id()
+                  << ": Initialized thread_local memory!\n";
+        return desired;
     }
+    // NOTE: This might be an issue. Throw an exception and/or make the output
+    // a tuple with the second being the error code
     return std::size_t(-1);
 }
 HPX_PLAIN_ACTION(init_thread_local_worker, init_thread_local_worker_action);
 
 #ifdef OCTOTIGER_HAVE_CUDA
-std::array<size_t, 7>
-sum_counters_worker(std::size_t desired) {
+std::array<size_t, 7> sum_counters_worker(std::size_t desired)
+{
     std::array<size_t, 7> ret;
     ret[0] = std::size_t(-1);
     ret[1] = 0;
@@ -105,21 +109,20 @@ sum_counters_worker(std::size_t desired) {
     std::size_t current = hpx::get_worker_thread_num();
     if (current == desired)
     {
+        using cuda_multi_intfc = octotiger::fmm::multipole_interactions::
+            cuda_multipole_interaction_interface;
+        using cuda_mono_intfc = octotiger::fmm::monopole_interactions::
+            cuda_p2p_interaction_interface;
+
         ret[0] = desired;
-        ret[1] = octotiger::fmm::multipole_interactions::
-        cuda_multipole_interaction_interface::cpu_launch_counter;
-        ret[2] = octotiger::fmm::multipole_interactions::
-        cuda_multipole_interaction_interface::cuda_launch_counter;
+        ret[1] = cuda_multi_intfc::cpu_launch_counter;
+        ret[2] = cuda_multi_intfc::cuda_launch_counter;
 
-        ret[3] = octotiger::fmm::monopole_interactions::
-        cuda_p2p_interaction_interface::cpu_launch_counter;
-        ret[4] = octotiger::fmm::monopole_interactions::
-        cuda_p2p_interaction_interface::cuda_launch_counter;
+        ret[3] = cuda_mono_intfc::cpu_launch_counter;
+        ret[4] = cuda_mono_intfc::cuda_launch_counter;
 
-        ret[5] = octotiger::fmm::multipole_interactions::
-        cuda_multipole_interaction_interface::cpu_launch_counter_non_rho;
-        ret[6] = octotiger::fmm::multipole_interactions::
-        cuda_multipole_interaction_interface::cuda_launch_counter_non_rho;
+        ret[5] = cuda_multi_intfc::cpu_launch_counter_non_rho;
+        ret[6] = cuda_multi_intfc::cuda_launch_counter_non_rho;
 
         // std::cout << "OS-thread " << ret[1] << " "
         //           << ret[2] << " " << ret[3]
@@ -205,7 +208,7 @@ void initialize(options _opts, std::vector<hpx::id_type> const& localities) {
 	compute_factor();
 
 #ifdef OCTOTIGER_HAVE_CUDA
-	std::cout << "Cuda is enabled! Available cuda targets on this localility: " << std::endl;
+	std::cout << "CUDA is enabled! Available CUDA targets on this locality: " << std::endl;
 	octotiger::util::cuda_helper::print_local_targets();
     octotiger::fmm::kernel_scheduler::init_constants();
 #endif
@@ -226,7 +229,7 @@ void initialize(options _opts, std::vector<hpx::id_type> const& localities) {
 
         for (std::size_t worker : attendance)
         {
-            typedef init_thread_local_worker_action action_type;
+            using action_type = init_thread_local_worker_action;
             futures.push_back(hpx::async<action_type>(here, worker));
         }
         hpx::lcos::local::spinlock mtx;
@@ -242,7 +245,7 @@ void initialize(options _opts, std::vector<hpx::id_type> const& localities) {
     }
 }
 
-void analyse_local_launch_counters(void) {
+void analyze_local_launch_counters() {
 #ifdef OCTOTIGER_HAVE_CUDA
     std::size_t const os_threads = hpx::get_os_thread_count();
     hpx::naming::id_type const here = hpx::find_here();
@@ -262,7 +265,7 @@ void analyse_local_launch_counters(void) {
 
         for (std::size_t worker : attendance)
         {
-            typedef sum_counters_worker_action action_type;
+            using action_type = sum_counters_worker_action;
             futures.push_back(hpx::async<action_type>(here, worker));
         }
         hpx::lcos::local::spinlock mtx;
@@ -349,12 +352,12 @@ int hpx_main(int argc, char* argv[]) {
 			node_client root_client(root_id);
 			node_server* root = root_client.get_ptr().get();
 
-			int ngrids = 0;
+			node_count_type ngrids = {0,0};
 			//		printf("1\n");
 			if (!opts().restart_filename.empty()) {
 				std::cout << "Loading from " << opts().restart_filename << " ...\n";
 				load_data_from_silo(opts().restart_filename, root, root_client.get_unmanaged_gid());
-				printf( "Regrid\n");
+				printf( "Re-grid\n");
 				ngrids = root->regrid(root_client.get_unmanaged_gid(), ZERO, -1, true, false);
 				printf("Done. \n");
 			} else {
@@ -363,16 +366,16 @@ int hpx_main(int argc, char* argv[]) {
 					printf("---------------Created Level %i---------------\n\n", int(l + 1));
 				}
 				ngrids = root->regrid(root_client.get_gid(), grid::get_omega(), -1, false);
-				printf("---------------Regridded Level %i---------------\n\n", int(opts().max_level));
+				printf("---------------Re-gridded Level %i---------------\n\n", int(opts().max_level));
 			}
 			if (opts().gravity) {
 				printf("solving gravity------------\n");
 				root->solve_gravity(false, false);
 				printf("...done\n");
 			}
-			hpx::async(&node_server::start_run, root, opts().problem == DWD && opts().restart_filename.empty(), ngrids).get();
+			hpx::async(&node_server::execute_solver, root, opts().problem == DWD && opts().restart_filename.empty(), ngrids).get();
 			root->report_timing();
-            analyse_local_launch_counters();
+            analyze_local_launch_counters();
 		}
 	} catch (...) {
 		throw;
@@ -383,7 +386,7 @@ int hpx_main(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 	std::vector<std::string> cfg = { "hpx.commandline.allow_unknown=1", // HPX should not complain about unknown command line options
-			"hpx.scheduler=local-priority-lifo",       // use LIFO scheduler by default
+			"hpx.scheduler=local-priority-lifo",       // Use LIFO scheduler by default
 			"hpx.parcel.mpi.zero_copy_optimization!=0" // Disable the usage of zero copy optimization for MPI...
 			};
 

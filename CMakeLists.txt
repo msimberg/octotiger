@@ -27,9 +27,12 @@ option(OCTOTIGER_WITH_BOOST_MULTIPRECISION
   "Use Boost.Multiprecision Instead of GCC Quad-Precision Math Library" OFF)
 option(OCTOTIGER_WITH_QUADMATH "Enable sections using GCC Quad-Precision Math Library" ON)
 option(OCTOTIGER_WITH_Vc "" ON)
-option(OCTOTIGER_WITH_AVX "" ON)
-option(OCTOTIGER_WITH_AVX2 "" ON)
+option(OCTOTIGER_WITH_AVX "" OFF)
+option(OCTOTIGER_WITH_AVX2 "" OFF)
+option(OCTOTIGER_WITH_AVX512 "" OFF)
 option(OCTOTIGER_WITH_TESTS "Enable tests" ON)
+
+set(OCTOTIGER_WITH_GRIDDIM "8" CACHE STRING "Grid size")
 
 ################################################################################
 # Find required packages
@@ -97,8 +100,8 @@ set(source_files
     src/multipole_interactions/multipole_cuda_kernel.cu
     src/multipole_interactions/calculate_stencil.cpp
     src/multipole_interactions/multipole_cpu_kernel.cpp
+    src/radiation/cuda_kernel.cu
     src/radiation/rad_grid.cpp
-    src/radiation/implicit.cpp
     src/test_problems/marshak/marshak.cpp
     src/test_problems/rotating_star/rotating_star.cpp
     src/test_problems/sod/sod.cpp
@@ -166,7 +169,10 @@ set(header_files
     octotiger/multipole_interactions/multipole_cpu_kernel.hpp
     octotiger/multipole_interactions/multipole_cuda_kernel.hpp
     octotiger/multipole_interactions/multipole_interaction_interface.hpp
+    octotiger/radiation/cpu_kernel.hpp
+    octotiger/radiation/cuda_kernel.hpp
     octotiger/radiation/implicit.hpp
+    octotiger/radiation/kernel_interface.hpp
     octotiger/radiation/opacities.hpp
     octotiger/radiation/rad_grid.hpp
     octotiger/test_problems/rotating_star/rotating_star.hpp
@@ -192,6 +198,14 @@ if(MSVC)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
   set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY
     VS_STARTUP_PROJECT octotiger)
+
+  string(REPLACE "/" "\\" SILO_ROOTPATH ${Silo_DIR})
+  string(REPLACE "/lib/cmake/HPX" "" HPX_ROOTPATH ${HPX_DIR})
+  string(REPLACE "/" "\\" HPX_ROOTPATH ${HPX_ROOTPATH})
+  add_custom_command(TARGET octotiger PRE_BUILD
+    COMMAND xcopy /D /Y ${SILO_ROOTPATH}\\SiloWindows\\MSVC2012\\x64\\Release\\*.dll $(TargetDir)
+    COMMAND xcopy /D /Y ${HPX_ROOTPATH}\\$(Configuration)\\bin\\*.dll $(TargetDir)
+    COMMENT "Copying files from Silo and HPX for $(Configuration) configuration")
 
   target_compile_definitions(octotiger PRIVATE
     _USE_MATH_DEFINES
@@ -230,16 +244,33 @@ if(OCTOTIGER_WITH_Vc)
   target_compile_definitions(octotiger PRIVATE OCTOTIGER_HAVE_VC)
 endif()
 
-if((OCTOTIGER_WITH_Vc AND USE_AVX2) OR OCTOTIGER_WITH_AVX2)
+if(OCTOTIGER_WITH_Vc AND USE_AVX512 AND OCTOTIGER_WITH_AVX512)
+  if(MSVC)
+    target_compile_options(octotiger PRIVATE /arch:AVX512)
+  else()
+    target_compile_options(octotiger PRIVATE -mavx512f)
+  endif()
+  message(STATUS "Enabled AVX512 compile options")
+  set(OCTOTIGER_WITH_AVX OFF CACHE BOOL "" FORCE)
+  set(OCTOTIGER_WITH_AVX2 OFF CACHE BOOL "" FORCE)
+elseif(OCTOTIGER_WITH_Vc AND USE_AVX2 AND OCTOTIGER_WITH_AVX2)
   if(MSVC)
     target_compile_options(octotiger PRIVATE /arch:AVX2)
   else()
+    target_compile_options(octotiger PRIVATE -mavx2)
   endif()
-elseif((OCTOTIGER_WITH_Vc AND USE_AVX) OR OCTOTIGER_WITH_AVX)
+  message(STATUS "Enabled AVX2 compile options")
+  set(OCTOTIGER_WITH_AVX OFF CACHE BOOL "" FORCE)
+  set(OCTOTIGER_WITH_AVX512 OFF CACHE BOOL "" FORCE)
+elseif(OCTOTIGER_WITH_Vc AND USE_AVX AND OCTOTIGER_WITH_AVX)
   if(MSVC)
     target_compile_options(octotiger PRIVATE /arch:AVX)
   else()
+    target_compile_options(octotiger PRIVATE -mavx)
   endif()
+  message(STATUS "Enabled AVX compile options")
+  set(OCTOTIGER_WITH_AVX2 OFF CACHE BOOL "" FORCE)
+  set(OCTOTIGER_WITH_AVX512 OFF CACHE BOOL "" FORCE)
 endif()
 
 # Handle CUDA
@@ -258,6 +289,11 @@ if(OCTOTIGER_WITH_RADIATION)
   target_compile_definitions(octotiger PRIVATE OCTOTIGER_HAVE_RADIATION)
 endif()
 
+# Grid size
+message(STATUS "Octotiger grid size: ${OCTOTIGER_WITH_GRIDDIM}")
+target_compile_definitions(octotiger PRIVATE OCTOTIGER_GRIDDIM=${OCTOTIGER_WITH_GRIDDIM})
+
+# Tests
 if(OCTOTIGER_WITH_BLAST_TEST)
   target_compile_definitions(octotiger PRIVATE OCTOTIGER_HAVE_BLAST_TEST)
   set(blast_sources
@@ -343,7 +379,7 @@ if(OCTOTIGER_WITH_TESTS)
       --config_file=${PROJECT_SOURCE_DIR}/test_problems/marshak/marshak.ini)
   add_test(NAME test_problems.marshak.diff
     COMMAND ${Silo_BROWSER} -e diff -q -x 1.0 -R 1.0e-12
-      ${PROJECT_BINARY_DIR}/marshak.silo ${PROJECT_BINARY_DIR}/final.silo)
+      ${PROJECT_BINARY_DIR}/marshak.silo ${PROJECT_BINARY_DIR}/final.${OCTOTIGER_WITH_GRIDDIM}.silo)
 
   set_tests_properties(test_problems.marshak PROPERTIES
     FIXTURES_SETUP test_problems.marshak)
@@ -359,7 +395,7 @@ if(OCTOTIGER_WITH_TESTS)
         --config_file=${PROJECT_SOURCE_DIR}/test_problems/blast/blast.ini)
     add_test(NAME test_problems.blast.diff
       COMMAND ${Silo_BROWSER} -e diff -q -x 1.0 -R 1.0e-12
-        ${PROJECT_BINARY_DIR}/blast.silo ${PROJECT_BINARY_DIR}/final.silo)
+        ${PROJECT_BINARY_DIR}/blast.silo ${PROJECT_BINARY_DIR}/final.${OCTOTIGER_WITH_GRIDDIM}.silo)
 
     set_tests_properties(test_problems.blast PROPERTIES
       FIXTURES_SETUP test_problems.blast)
@@ -376,7 +412,7 @@ if(OCTOTIGER_WITH_TESTS)
 
   add_test(NAME test_problems.sod.diff
     COMMAND ${Silo_BROWSER} -e diff -q -x 1.0 -R 1.0e-12
-      ${PROJECT_BINARY_DIR}/sod.silo ${PROJECT_BINARY_DIR}/final.silo)
+      ${PROJECT_BINARY_DIR}/sod.silo ${PROJECT_BINARY_DIR}/final.${OCTOTIGER_WITH_GRIDDIM}.silo)
 
   set_tests_properties(test_problems.sod PROPERTIES
     FIXTURES_SETUP test_problems.sod)
@@ -391,7 +427,7 @@ if(OCTOTIGER_WITH_TESTS)
       --config_file=${PROJECT_SOURCE_DIR}/test_problems/sphere/sphere.ini)
   add_test(NAME test_problems.sphere.diff
     COMMAND ${Silo_BROWSER} -e diff -q -x 1.0 -R 1.0e-12
-      ${PROJECT_BINARY_DIR}/sphere.silo ${PROJECT_BINARY_DIR}/X.silo)
+      ${PROJECT_BINARY_DIR}/sphere.silo ${PROJECT_BINARY_DIR}/X.${OCTOTIGER_WITH_GRIDDIM}.silo)
 
   set_tests_properties(test_problems.sphere PROPERTIES
     FIXTURES_SETUP test_problems.sphere)
@@ -408,7 +444,7 @@ if(OCTOTIGER_WITH_TESTS)
       --config_file=${PROJECT_SOURCE_DIR}/test_problems/rotating_star/rotating_star.ini)
   add_test(NAME test_problems.rotating_star.diff
     COMMAND ${Silo_BROWSER} -e diff -q -x 1.0 -R 1.0e-12
-      ${PROJECT_BINARY_DIR}/rotating_star.silo ${PROJECT_BINARY_DIR}/final.silo)
+      ${PROJECT_BINARY_DIR}/rotating_star.silo ${PROJECT_BINARY_DIR}/final.${OCTOTIGER_WITH_GRIDDIM}.silo)
 
   set_tests_properties(test_problems.rotating_star.init PROPERTIES
     FIXTURES_SETUP test_problems.rotating_star.init)
