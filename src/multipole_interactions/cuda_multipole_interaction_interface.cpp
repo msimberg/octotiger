@@ -31,7 +31,8 @@ namespace fmm {
             kernel_scheduler::scheduler.init();
             // Check where we want to run this:
             int slot = kernel_scheduler::scheduler.get_launch_slot();
-            if (slot == -1 || m2m_type == interaction_kernel_type::OLD) {    // Run fallback cpu implementation
+            if (!kernel_scheduler::scheduler.is_enabled() || slot == -1 ||
+                m2m_type == interaction_kernel_type::OLD) {    // Run fallback cpu implementation
                 if (type == RHO)
                     cpu_launch_counter++;
                 else

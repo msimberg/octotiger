@@ -107,6 +107,7 @@ namespace fmm {
 
         void init(void);
         static void init_constants(void);
+        bool is_enabled(void) {return gpu_enabled;}
     public:
         kernel_scheduler(kernel_scheduler& other) = delete;
         kernel_scheduler(const kernel_scheduler& other) = delete;
@@ -125,6 +126,7 @@ namespace fmm {
         /// How many slots are there
         size_t number_slots;
         bool is_initialized;
+        bool gpu_enabled;
         size_t round_robin_index;
 
         /// Contains number_cuda_streams_managed cuda interfaces

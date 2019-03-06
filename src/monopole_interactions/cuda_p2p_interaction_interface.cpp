@@ -23,7 +23,8 @@ namespace fmm {
             kernel_scheduler::scheduler.init();
             // Check where we want to run this:
             int slot = kernel_scheduler::scheduler.get_launch_slot();
-            if (slot == -1 || p2p_type == interaction_kernel_type::OLD) {    // Run cpu implementation
+            if (!kernel_scheduler::scheduler.is_enabled() || slot == -1 ||
+                p2p_type == interaction_kernel_type::OLD) {    // Run cpu implementation
                 cpu_launch_counter++;
                 p2p_interaction_interface::compute_p2p_interactions(
                     monopoles, neighbors, type, dx, is_direction_empty);

@@ -21,7 +21,7 @@ namespace octotiger {
             : number_cuda_streams_managed(0)
             , slots_per_cuda_stream(1)    // Slots (queue per stream) is currently deactived
             , number_slots(number_cuda_streams_managed * slots_per_cuda_stream),
-              is_initialized(false), round_robin_index(0) {
+              is_initialized(false), round_robin_index(0), gpu_enabled(false) {
         }
         void kernel_scheduler::init_constants(void)
         {
@@ -129,6 +129,8 @@ namespace octotiger {
 
                 // Number of streams the current HPX worker thread has to handle
                 number_cuda_streams_managed = number_of_streams_managed;
+                if (number_cuda_streams_managed > 0)
+                    gpu_enabled = true;
                 number_slots = number_cuda_streams_managed * slots_per_cuda_stream;
 
                 // Get one slot per stream to handle the data on the cpu
@@ -201,6 +203,8 @@ namespace octotiger {
         }
 
         int kernel_scheduler::get_launch_slot(void) {
+            if (!gpu_enabled)
+                return -1;
             for (size_t slot_id = 0; slot_id < number_cuda_streams_managed; ++slot_id) {
                 const cudaError_t response = stream_interfaces[slot_id].pass_through(
                     [](cudaStream_t& stream) -> cudaError_t { return cudaStreamQuery(stream); });
