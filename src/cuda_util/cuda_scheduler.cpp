@@ -21,7 +21,7 @@ namespace octotiger {
             : number_cuda_streams_managed(0)
             , slots_per_cuda_stream(1)    // Slots (queue per stream) is currently deactived
             , number_slots(number_cuda_streams_managed * slots_per_cuda_stream),
-              is_initialized(false) {
+              is_initialized(false), round_robin_index(0) {
         }
         void kernel_scheduler::init_constants(void)
         {
@@ -213,7 +213,9 @@ namespace octotiger {
                 }
             }
             // No slots available
-            return -1;
+            size_t slot = round_robin_index;
+            round_robin_index = (round_robin_index + 1) % number_cuda_streams_managed;
+            return slot;
         }
 
         kernel_staging_area kernel_scheduler::get_staging_area(size_t slot) {

@@ -49,6 +49,12 @@ namespace fmm {
             struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING,
                 std::vector<real, cuda_pinned_allocator<real>>>
                 potential_expansions_SoA;
+
+            struct_of_array_data<expansion, real, 20, ENTRIES, SOA_PADDING,
+                std::vector<real, cuda_pinned_allocator<real>>> local_expansions_SoA;
+            struct_of_array_data<space_vector, real, 3, ENTRIES, SOA_PADDING,
+                std::vector<real, cuda_pinned_allocator<real>>> center_of_masses_SoA;
+            std::vector<real, cuda_pinned_allocator<real>> local_monopoles;
         };
 
     }    // namespace multipole_interactions

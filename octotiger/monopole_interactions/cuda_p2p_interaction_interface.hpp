@@ -40,6 +40,7 @@ namespace fmm {
             struct_of_array_data<expansion, real, 20, INNER_CELLS, SOA_PADDING,
                 std::vector<real, cuda_pinned_allocator<real>>>
                 potential_expansions_SoA;
+          std::vector<real, cuda_pinned_allocator<real>> local_monopoles;
         };
 
     }    // namespace monopole_interactions

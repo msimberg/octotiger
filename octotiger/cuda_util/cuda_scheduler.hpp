@@ -125,6 +125,7 @@ namespace fmm {
         /// How many slots are there
         size_t number_slots;
         bool is_initialized;
+        size_t round_robin_index;
 
         /// Contains number_cuda_streams_managed cuda interfaces
         std::vector<util::cuda_helper> stream_interfaces;

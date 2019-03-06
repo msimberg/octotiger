@@ -14,8 +14,7 @@ namespace fmm {
         thread_local size_t cuda_p2p_interaction_interface::cuda_launch_counter = 0;
 
         cuda_p2p_interaction_interface::cuda_p2p_interaction_interface(void)
-          : p2p_interaction_interface()
-          , theta(opts().theta) {
+            : p2p_interaction_interface(), local_monopoles(ENTRIES), theta(opts().theta) {
         }
 
         void cuda_p2p_interaction_interface::compute_p2p_interactions(std::vector<real>& monopoles,
@@ -31,8 +30,7 @@ namespace fmm {
             } else {    // run on cuda device
                 cuda_launch_counter++;
                 // Move data into staging arrays
-                auto staging_area = kernel_scheduler::scheduler.get_staging_area(slot);
-                update_input(monopoles, neighbors, type, staging_area.local_monopoles);
+                update_input(monopoles, neighbors, type, local_monopoles);
 
                 // Queue moving of input data to device
                 util::cuda_helper& gpu_interface =
@@ -40,7 +38,7 @@ namespace fmm {
                 kernel_device_enviroment& env =
                     kernel_scheduler::scheduler.get_device_enviroment(slot);
                 gpu_interface.copy_async(env.device_local_monopoles,
-                    staging_area.local_monopoles.data(), local_monopoles_size,
+                    local_monopoles.data(), local_monopoles_size,
                     cudaMemcpyHostToDevice);
 
                 // Launch kernel and queue copying of results

@@ -19,8 +19,7 @@ namespace fmm {
 
 
         cuda_multipole_interaction_interface::cuda_multipole_interaction_interface(void)
-          : multipole_interaction_interface()
-          , theta(opts().theta) {
+            : multipole_interaction_interface(), local_monopoles(ENTRIES), theta(opts().theta) {
         }
 
         void cuda_multipole_interaction_interface::compute_multipole_interactions(
@@ -45,22 +44,21 @@ namespace fmm {
                 else
                     cuda_launch_counter_non_rho++;
                 // Move data into SoA arrays
-                auto staging_area = kernel_scheduler::scheduler.get_staging_area(slot);
                 update_input(monopoles, M_ptr, com_ptr, neighbors, type, dx, xbase,
-                    staging_area.local_monopoles, staging_area.local_expansions_SoA,
-                    staging_area.center_of_masses_SoA);
+                    local_monopoles, local_expansions_SoA,
+                    center_of_masses_SoA);
 
                 // Queue moving of input data to device
                 util::cuda_helper& gpu_interface = kernel_scheduler::scheduler.get_launch_interface(slot);
                 kernel_device_enviroment& env = kernel_scheduler::scheduler.get_device_enviroment(slot);
                 gpu_interface.copy_async(env.device_local_monopoles,
-                    staging_area.local_monopoles.data(), local_monopoles_size,
+                    local_monopoles.data(), local_monopoles_size,
                     cudaMemcpyHostToDevice);
                 gpu_interface.copy_async(env.device_local_expansions,
-                    staging_area.local_expansions_SoA.get_pod(), local_expansions_size,
+                    local_expansions_SoA.get_pod(), local_expansions_size,
                     cudaMemcpyHostToDevice);
                 gpu_interface.copy_async(env.device_center_of_masses,
-                    staging_area.center_of_masses_SoA.get_pod(), center_of_masses_size,
+                    center_of_masses_SoA.get_pod(), center_of_masses_size,
                     cudaMemcpyHostToDevice);
 
                 // Launch kernel and queue copying of results
@@ -73,9 +71,6 @@ namespace fmm {
                         &(env.device_angular_corrections), &theta, &second_phase};
                     gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_rho, grid_spec,
                     threads_per_block, args, 0);
-                    // second_phase = true;
-                    // gpu_interface.execute(&cuda_multipole_interactions_kernel_rho, grid_spec,
-                    //                       threads_per_block, args, 0);
                     gpu_interface.copy_async(angular_corrections_SoA.get_pod(),
                                              env.device_angular_corrections, angular_corrections_size,
                                              cudaMemcpyDeviceToHost);
@@ -87,9 +82,6 @@ namespace fmm {
                         &theta, &second_phase};
                     gpu_interface.execute((const void*)&cuda_multipole_interactions_kernel_non_rho, grid_spec,
                         threads_per_block, args, 0);
-                    // second_phase = true;
-                    // gpu_interface.execute(&cuda_multipole_interactions_kernel_non_rho, grid_spec,
-                    //     threads_per_block, args, 0);
                 }
                 gpu_interface.copy_async(potential_expansions_SoA.get_pod(),
                     env.device_potential_expansions, potential_expansions_size,
