@@ -63,8 +63,8 @@ namespace fmm {
                     cudaMemcpyHostToDevice);
 
                 // Launch kernel and queue copying of results
-                const dim3 grid_spec(INX, 1, 1);
-                const dim3 threads_per_block(1, INX, INX);
+                const dim3 grid_spec(INX, 2, 2);
+                const dim3 threads_per_block(1, 8, 8);
                 if (type == RHO) {
                     bool second_phase = false;
                     void* args[] = {&(env.device_local_monopoles), &(env.device_center_of_masses),
