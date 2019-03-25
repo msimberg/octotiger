@@ -8,11 +8,17 @@
 #ifndef SRC_SILO_HPP_
 #define SRC_SILO_HPP_
 
+
+#define SILO_DRIVER DB_HDF5
+#define SILO_VERSION 100
+
+
 #include "octotiger/defs.hpp"
 #include "octotiger/real.hpp"
 
 #include <hpx/include/naming.hpp>
 
+#include <octotiger/node_location.hpp>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -81,5 +87,30 @@ void output_all(std::string fname, int cycle, bool);
 void load_options_from_silo(std::string fname, DBfile* = NULL);
 
 void load_data_from_silo(std::string fname, node_server*, hpx::id_type);
+
+inline std::string outflow_name(const std::string& varname) {
+	return varname + std::string("_outflow");
+}
+
+inline std::string oct_to_str(node_location::node_id n) {
+	return hpx::util::format("{:llo}", n);
+}
+
+
+struct node_list_t {
+	std::vector<node_location::node_id> silo_leaves;
+	std::vector<node_location::node_id> all;
+	std::vector<integer> positions;
+	std::vector<std::vector<double>> extents;
+	std::vector<int> zone_count;
+	template<class Arc>
+	void serialize(Arc& arc, unsigned) {
+		arc & silo_leaves;
+		arc & all;
+		arc & positions;
+		arc & extents;
+		arc & zone_count;
+	}
+};
 
 #endif /* SRC_SILO_HPP_ */
