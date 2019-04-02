@@ -420,15 +420,14 @@ int hpx_main(int argc, char* argv[]) {
 			node_count_type ngrids = {0,0};
 			//		printf("1\n");
 			if (!opts().restart_filename.empty()) {
+                timings::scope ts(root->timings_, timings::time_total);
 				std::cout << "Loading from " << opts().restart_filename << " ...\n";
 				load_data_from_silo(opts().restart_filename, root, root_client.get_unmanaged_gid());
 				printf( "Re-grid\n");
 				ngrids = root->regrid(root_client.get_unmanaged_gid(), ZERO, -1, true, false);
 				printf("Done. \n");
-
-
-
 			} else {
+                timings::scope ts(root->timings_, timings::time_total);
 				for (integer l = 0; l < opts().max_level; ++l) {
 					ngrids = root->regrid(root_client.get_gid(), grid::get_omega(), -1, false);
 					printf("---------------Created Level %i---------------\n\n", int(l + 1));
@@ -437,6 +436,7 @@ int hpx_main(int argc, char* argv[]) {
 				printf("---------------Re-gridded Level %i---------------\n\n", int(opts().max_level));
 			}
 			for (integer l = 0; l < opts().extra_regrid; ++l) {
+                timings::scope ts(root->timings_, timings::time_total);
 				ngrids = root->regrid(root_client.get_gid(), grid::get_omega(), -1, false);
 			}
 

@@ -81,6 +81,7 @@ struct timings
 
     void report(std::string const& name)
     {
+        std::cout << "===================================" << std::endl;
         std::cout << name << ":\n";
         std::cout << "   Total: "             << times_[time_total] << '\n';
         std::cout << "   Computation: "       << times_[time_computation] << '\n';
