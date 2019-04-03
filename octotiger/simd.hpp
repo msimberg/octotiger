@@ -417,14 +417,14 @@
 
 
 //#if defined(Vc_IMPL_AVX2)
-//using simd_vector = Vc::datapar<double, Vc::datapar_abi::avx512>;
-//using v4sd = Vc::datapar<double, Vc::datapar_abi::avx>;
-//constexpr std::size_t simd_len = simd_vector::size();
-//#elif defined(Vc_IMPL_AVX)
-using simd_vector = Vc::SimdArray<double, 8>;
-using int_simd_vector = Vc::SimdArray<std::uint32_t, 8>;
-using v4sd = Vc::SimdArray<double, 4>;
+using simd_vector = Vc::datapar<double, Vc::datapar_abi::avx512>;
+using v4sd = Vc::datapar<double, Vc::datapar_abi::avx>;
 constexpr std::size_t simd_len = simd_vector::size();
+//#elif defined(Vc_IMPL_AVX)
+//using simd_vector = Vc::SimdArray<double, 8>;
+//using int_simd_vector = Vc::SimdArray<std::uint32_t, 8>;
+//using v4sd = Vc::SimdArray<double, 4>;
+//constexpr std::size_t simd_len = simd_vector::size();
 // using simd_vector = hpx::parallel::traits::vector_pack_type<double, 8>::type;
 // using v4sd = Vc::datapar<double, Vc::datapar_abi::avx>;
 //#else

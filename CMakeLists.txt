@@ -183,7 +183,7 @@ set(header_files
 add_hpx_executable(
   octotiger
   DEPENDENCIES
-    Silo::silo Vc::Vc Boost::boost
+    Silo::silo Boost::boost
   SOURCES
     ${source_files}
   HEADERS
@@ -239,8 +239,6 @@ else()
 endif()
 
 if(OCTOTIGER_WITH_Vc)
-  find_package(Vc REQUIRED)
-
   target_compile_definitions(octotiger PRIVATE OCTOTIGER_HAVE_VC)
 endif()
 

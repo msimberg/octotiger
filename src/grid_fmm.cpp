@@ -480,14 +480,14 @@ void grid::compute_interactions(gsolve_type type) {
         auto* di0 = reinterpret_cast<double*>((std::uintptr_t(di0_) & ~0x1F) | 0x20);
         di0[0] = 1.0 / dx;
         di0[1] = di0[2] = di0[3] = +1.0 / sqr(dx);
-        const v4sd d0(di0, Vc::Aligned);
+        const v4sd d0(di0, Vc::flags::element_aligned);
 
         // negative of d0 because it's the force in the opposite direction
         double di1_[8];
         auto* di1 = reinterpret_cast<double*>((std::uintptr_t(di1_) & ~0x1F) | 0x20);
         di1[0] = 1.0 / dx;
         di1[1] = di1[2] = di1[3] = -1.0 / sqr(dx);
-        const v4sd d1(di1, Vc::Aligned);
+        const v4sd d1(di1, Vc::flags::element_aligned);
 
         // Number of body-body interactions current leaf cell, probably includes interactions with
         // bodies in neighboring cells  (David)
@@ -973,7 +973,7 @@ void grid::compute_boundary_interactions_monopole_monopole(gsolve_type type,
     auto* di0 = reinterpret_cast<double*>((std::uintptr_t(di0_) & ~0x1F) | 0x20);
     di0[0] = 1.0 / dx;
     di0[1] = di0[2] = di0[3] = +1.0 / sqr(dx);
-    const v4sd d0(di0, Vc::Aligned);
+    const v4sd d0(di0, Vc::flags::element_aligned);
 
     hpx::parallel::for_loop(
         for_loop_policy, 0, ilist_n_bnd.size(),

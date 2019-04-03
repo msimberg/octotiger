@@ -133,9 +133,9 @@ namespace fmm {
                             cell_index_coarse, interaction_partner_index_coarse2);
 
                         const m2m_vector theta_c_rec_squared =
-                            Vc::simd_cast<m2m_vector>(theta_c_rec_squared_int);
+                            Vc::static_datapar_cast_double_to_int(theta_c_rec_squared_int);
                         const m2m_vector theta_c_rec_squared2 =
-                            Vc::simd_cast<m2m_vector>(theta_c_rec_squared_int2);
+                            Vc::static_datapar_cast_double_to_int(theta_c_rec_squared_int2);
 
                         const m2m_vector::mask_type mask = theta_rec_squared > theta_c_rec_squared;
                         const m2m_vector::mask_type mask2 = theta_rec_squared > theta_c_rec_squared2;
@@ -145,10 +145,10 @@ namespace fmm {
                         data_changed = true;
                         m2m_vector monopole;
                         Vc::where(mask, monopole) = m2m_vector(
-                            mons.data() + interaction_partner_flat_index);
+                            mons.data() + interaction_partner_flat_index, Vc::flags::element_aligned);
                         m2m_vector monopole2;
                         Vc::where(mask2, monopole2) = m2m_vector(
-                            mons.data() + interaction_partner_flat_index + INX + 10);
+                            mons.data() + interaction_partner_flat_index + INX + 10, Vc::flags::element_aligned);
 
                         const m2m_vector four[4] = {
                             four_constants[index][0],
@@ -163,18 +163,18 @@ namespace fmm {
             }
 
             if (data_changed) {
-                tmpstore1[0].store(potential_expansions_SoA.pointer<0>(cell_flat_index_unpadded));
-                tmpstore1[1].store(potential_expansions_SoA.pointer<1>(cell_flat_index_unpadded));
-                tmpstore1[2].store(potential_expansions_SoA.pointer<2>(cell_flat_index_unpadded));
-                tmpstore1[3].store(potential_expansions_SoA.pointer<3>(cell_flat_index_unpadded));
-                tmpstore2[0].store(
-                    potential_expansions_SoA.pointer<0>(cell_flat_index_unpadded + INX));
-                tmpstore2[1].store(
-                    potential_expansions_SoA.pointer<1>(cell_flat_index_unpadded + INX));
-                tmpstore2[2].store(
-                    potential_expansions_SoA.pointer<2>(cell_flat_index_unpadded + INX));
-                tmpstore2[3].store(
-                    potential_expansions_SoA.pointer<3>(cell_flat_index_unpadded + INX));
+                tmpstore1[0].memstore(potential_expansions_SoA.pointer<0>(cell_flat_index_unpadded), Vc::flags::element_aligned);
+                tmpstore1[1].memstore(potential_expansions_SoA.pointer<1>(cell_flat_index_unpadded), Vc::flags::element_aligned);
+                tmpstore1[2].memstore(potential_expansions_SoA.pointer<2>(cell_flat_index_unpadded), Vc::flags::element_aligned);
+                tmpstore1[3].memstore(potential_expansions_SoA.pointer<3>(cell_flat_index_unpadded), Vc::flags::element_aligned);
+                tmpstore2[0].memstore(
+                    potential_expansions_SoA.pointer<0>(cell_flat_index_unpadded + INX), Vc::flags::element_aligned);
+                tmpstore2[1].memstore(
+                    potential_expansions_SoA.pointer<1>(cell_flat_index_unpadded + INX), Vc::flags::element_aligned);
+                tmpstore2[2].memstore(
+                    potential_expansions_SoA.pointer<2>(cell_flat_index_unpadded + INX), Vc::flags::element_aligned);
+                tmpstore2[3].memstore(
+                    potential_expansions_SoA.pointer<3>(cell_flat_index_unpadded + INX), Vc::flags::element_aligned);
             }
         }
     }    // namespace monopole_interactions
