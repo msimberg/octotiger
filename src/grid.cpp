@@ -2149,17 +2149,17 @@ void grid::reconstruct() {
 		std::vector<real> const& Vfield = V[field];
 #pragma GCC ivdep
 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			if (field == sy_i || field == sz_i) {
+			if ((field == sy_i || field == sz_i) && opts().hydro_angmom_correction) {
 				slpx[field][iii] = vanleer(Vfield[iii + H_DNX] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNX]);
 			} else {
 				slpx[field][iii] = minmod_theta(Vfield[iii + H_DNX] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNX], 2.0);
 			}
-			if (field == sx_i || field == sz_i) {
+			if ((field == sx_i || field == sz_i) && opts().hydro_angmom_correction) {
 				slpy[field][iii] = vanleer(Vfield[iii + H_DNY] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNY]);
 			} else {
 				slpy[field][iii] = minmod_theta(Vfield[iii + H_DNY] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNY], 2.0);
 			}
-			if (field == sx_i || field == sy_i) {
+			if ((field == sx_i || field == sy_i) && opts().hydro_angmom_correction) {
 				slpz[field][iii] = vanleer(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ]);
 			} else {
 				slpz[field][iii] = minmod_theta(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ], 2.0);
@@ -2175,38 +2175,41 @@ void grid::reconstruct() {
 		lhs = minmod(lhs, vanleer(r1 - r2, r2 - r3));
 	};
 
-	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-		inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
-		inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
-		inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
+	if( opts().hydro_angmom_correction) {
 
-		step1(slpx[sy_i][iii], V[zz_i][iii]);
-		step1(slpy[sz_i][iii], V[zx_i][iii]);
-		step1(slpz[sx_i][iii], V[zy_i][iii]);
+		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+			inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
+			inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
+			inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
 
-		step2(slpy[sx_i][iii], V[zz_i][iii]);
-		step2(slpz[sy_i][iii], V[zx_i][iii]);
-		step2(slpx[sz_i][iii], V[zy_i][iii]);
+			step1(slpx[sy_i][iii], V[zz_i][iii]);
+			step1(slpy[sz_i][iii], V[zx_i][iii]);
+			step1(slpz[sx_i][iii], V[zy_i][iii]);
 
-		minmod_step(slpx[sy_i][iii], V[sy_i][iii + H_DNX], V[sy_i][iii], V[sy_i][iii - H_DNX]);
-		minmod_step(slpx[sz_i][iii], V[sz_i][iii + H_DNX], V[sz_i][iii], V[sz_i][iii - H_DNX]);
-		minmod_step(slpy[sx_i][iii], V[sx_i][iii + H_DNY], V[sx_i][iii], V[sx_i][iii - H_DNY]);
-		minmod_step(slpy[sz_i][iii], V[sz_i][iii + H_DNY], V[sz_i][iii], V[sz_i][iii - H_DNY]);
-		minmod_step(slpz[sx_i][iii], V[sx_i][iii + H_DNZ], V[sx_i][iii], V[sx_i][iii - H_DNZ]);
-		minmod_step(slpz[sy_i][iii], V[sy_i][iii + H_DNZ], V[sy_i][iii], V[sy_i][iii - H_DNZ]);
+			step2(slpy[sx_i][iii], V[zz_i][iii]);
+			step2(slpz[sy_i][iii], V[zx_i][iii]);
+			step2(slpx[sz_i][iii], V[zy_i][iii]);
 
-		const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
-		const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
-		const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
+			minmod_step(slpx[sy_i][iii], V[sy_i][iii + H_DNX], V[sy_i][iii], V[sy_i][iii - H_DNX]);
+			minmod_step(slpx[sz_i][iii], V[sz_i][iii + H_DNX], V[sz_i][iii], V[sz_i][iii - H_DNX]);
+			minmod_step(slpy[sx_i][iii], V[sx_i][iii + H_DNY], V[sx_i][iii], V[sx_i][iii - H_DNY]);
+			minmod_step(slpy[sz_i][iii], V[sz_i][iii + H_DNY], V[sz_i][iii], V[sz_i][iii - H_DNY]);
+			minmod_step(slpz[sx_i][iii], V[sx_i][iii + H_DNZ], V[sx_i][iii], V[sx_i][iii - H_DNZ]);
+			minmod_step(slpz[sy_i][iii], V[sy_i][iii + H_DNZ], V[sy_i][iii], V[sy_i][iii - H_DNZ]);
 
-		const real Vzxi = V[zx_i][iii] - zx_lim * dx;
-		const real Vzyi = V[zy_i][iii] - zy_lim * dx;
-		const real Vzzi = V[zz_i][iii] - zz_lim * dx;
+			const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
+			const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
+			const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
 
-		for (int face = 0; face != NFACE; ++face) {
-			Uf[face][zx_i][iii] = Vzxi;
-			Uf[face][zy_i][iii] = Vzyi;
-			Uf[face][zz_i][iii] = Vzzi;
+			const real Vzxi = V[zx_i][iii] - zx_lim * dx;
+			const real Vzyi = V[zy_i][iii] - zy_lim * dx;
+			const real Vzzi = V[zz_i][iii] - zz_lim * dx;
+
+			for (int face = 0; face != NFACE; ++face) {
+				Uf[face][zx_i][iii] = Vzxi;
+				Uf[face][zy_i][iii] = Vzyi;
+				Uf[face][zz_i][iii] = Vzzi;
+			}
 		}
 	}
 	for (integer field = 0; field != opts().n_fields; ++field) {
@@ -2219,7 +2222,7 @@ void grid::reconstruct() {
 		if (field >= zx_i && field <= zz_i) {
 			continue;
 		}
-		if (!(field == sy_i || field == sz_i)) {
+		if (!(field == sy_i || field == sz_i) || !opts().hydro_angmom_correction) {
 #pragma GCC ivdep
 			for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
 				UfFXPfield[iii] = UfFXMfield[iii + H_DNX] = average(Vfield[iii + H_DNX], Vfield[iii]);
@@ -2245,7 +2248,7 @@ void grid::reconstruct() {
 		std::vector<real>& UfFYMfield = Uf[FYM][field];
 		std::vector<real> const& slpyfield = slpy[field];
 
-		if (!(field == sx_i || field == sz_i)) {
+		if (!(field == sx_i || field == sz_i) || !opts().hydro_angmom_correction) {
 #pragma GCC ivdep
 			for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
 				UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(Vfield[iii + H_DNY], Vfield[iii]);
@@ -2271,7 +2274,7 @@ void grid::reconstruct() {
 		std::vector<real>& UfFZMfield = Uf[FZM][field];
 		std::vector<real> const& slpzfield = slpz[field];
 
-		if (!(field == sx_i || field == sy_i)) {
+		if (!(field == sx_i || field == sy_i) || !opts().hydro_angmom_correction) {
 #pragma GCC ivdep
 			for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
 				UfFZPfield[iii] = UfFZMfield[iii + H_DNZ] = average(Vfield[iii + H_DNZ], Vfield[iii]);

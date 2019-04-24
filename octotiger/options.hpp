@@ -25,6 +25,8 @@ COMMAND_LINE_ENUM(eos_type,IDEAL,WD);
 
 class options {
 public:
+	bool hydro_angmom_correction;
+	bool gravity_angmom_correction;
 	bool disable_diagnostics;
 	bool bench;
 	bool disable_output;
@@ -124,6 +126,8 @@ public:
 		arc & output_filename;
 		arc & output_dt;
 		arc & stop_step;
+		arc & hydro_angmom_correction;
+		arc & gravity_angmom_correction;
 		arc & disable_diagnostics;
 		arc & disable_output;
 		arc & theta;

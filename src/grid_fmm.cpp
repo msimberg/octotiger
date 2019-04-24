@@ -1498,7 +1498,11 @@ expansion_pass_type grid::compute_expansions(
 
                         if (type == RHO ) {
                             for (integer j = 0; j != 3; ++j) {
-                                exp_ret.second[index][j] = L_ciiic[j];
+                            	if( opts().gravity_angmom_correction ) {
+                            		exp_ret.second[index][j] = L_ciiic[j];
+                            	} else {
+                            		exp_ret.second[index][j] = 0;
+                            	}
                             }
                         }
                     }
