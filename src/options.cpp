@@ -60,8 +60,8 @@ bool options::process_options(int argc, char* argv[]) {
 
 	po::options_description command_opts("options");
 	command_opts.add_options() //
-	("hydro_angmom_correction", po::value<bool>(&(opts().compress_silo))->default_value(true), "hydro angular momentum correction")    //
-	("gravity_angmom_correction", po::value<bool>(&(opts().compress_silo))->default_value(true), "gravity angular momentum correction")    //
+	("hydro_angmom_correction", po::value<bool>(&(opts().hydro_angmom_correction))->default_value(true), "hydro angular momentum correction")    //
+	("gravity_angmom_correction", po::value<bool>(&(opts().gravity_angmom_correction))->default_value(true), "gravity angular momentum correction")    //
 	("help", "produce help message")
 	("xscale", po::value<real>(&(opts().xscale))->default_value(1.0), "grid scale")           //
 	("cfl", po::value<real>(&(opts().cfl))->default_value(2./15.), "cfl factor")           //

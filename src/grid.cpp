@@ -2219,7 +2219,7 @@ void grid::reconstruct() {
 		std::vector<real>& UfFXMfield = Uf[FXM][field];
 		std::vector<real> const& slpxfield = slpx[field];
 
-		if (field >= zx_i && field <= zz_i) {
+		if (field >= zx_i && field <= zz_i && opts().hydro_angmom_correction) {
 			continue;
 		}
 		if (!(field == sy_i || field == sz_i) || !opts().hydro_angmom_correction) {
