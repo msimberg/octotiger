@@ -60,6 +60,7 @@ bool options::process_options(int argc, char* argv[]) {
 
 	po::options_description command_opts("options");
 	command_opts.add_options() //
+	("alt_vel_recon", po::value<bool>(&(opts().alt_vel_recon))->default_value(false), "alternative velocity reconstruction")    //
 	("hydro_angmom_correction", po::value<bool>(&(opts().hydro_angmom_correction))->default_value(true), "hydro angular momentum correction")    //
 	("gravity_angmom_correction", po::value<bool>(&(opts().gravity_angmom_correction))->default_value(true), "gravity angular momentum correction")    //
 	("help", "produce help message")

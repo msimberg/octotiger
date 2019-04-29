@@ -1717,9 +1717,11 @@ void grid::compute_primitives(const std::array<integer, NDIM> lb, const std::arr
 						V[zx_i + d][iii] = U[zx_i + d][iii] * rhoinv;
 					}
 
-					V[sx_i][iii] += X[YDIM][iii] * omega;
-					V[sy_i][iii] -= X[XDIM][iii] * omega;
-					V[zz_i][iii] -= sqr(dx) * omega / 6.0;
+					if( !opts().alt_vel_recon ) {
+						V[sx_i][iii] += X[YDIM][iii] * omega;
+						V[sy_i][iii] -= X[XDIM][iii] * omega;
+						V[zz_i][iii] -= sqr(dx) * omega / 6.0;
+					}
 				}
 			}
 		}
@@ -1742,9 +1744,11 @@ void grid::compute_primitives(const std::array<integer, NDIM> lb, const std::arr
 						V[egas_i][iii] -= 0.5 * v /** v;*/* U[sx_i + d][iii];
 						V[zx_i + d][iii] = U[zx_i + d][iii] * rhoinv;
 					}
-					V[sx_i][iii] += X[YDIM][iii] * omega;
-					V[sy_i][iii] -= X[XDIM][iii] * omega;
-					V[zz_i][iii] -= sqr(dx) * omega / 6.0;
+					if( !opts().alt_vel_recon ) {
+						V[sx_i][iii] += X[YDIM][iii] * omega;
+						V[sy_i][iii] -= X[XDIM][iii] * omega;
+						V[zz_i][iii] -= sqr(dx) * omega / 6.0;
+					}
 				}
 			}
 		}
@@ -1819,16 +1823,18 @@ void grid::compute_conserved_slopes(const std::array<integer, NDIM> lb, const st
 	auto& V = TLS_V();
 	const real theta = 1.0;
 	if (!etot_only) {
-		for (integer i = lb[XDIM]; i != ub[XDIM]; ++i) {
-			for (integer j = lb[YDIM]; j != ub[YDIM]; ++j) {
+		if( !opts().alt_vel_recon ) {
+			for (integer i = lb[XDIM]; i != ub[XDIM]; ++i) {
+				for (integer j = lb[YDIM]; j != ub[YDIM]; ++j) {
 #pragma GCC ivdep
-				for (integer k = lb[ZDIM]; k != ub[ZDIM]; ++k) {
-					const integer iii = hindex(i, j, k);
-					V[sx_i][iii] -= X[YDIM][iii] * omega;
-					V[sy_i][iii] += X[XDIM][iii] * omega;
-					V[zz_i][iii] += sqr(dx) * omega / 6.0;
-					dVdx[YDIM][sx_i][iii] -= dx * omega;
-					dVdx[XDIM][sy_i][iii] += dx * omega;
+					for (integer k = lb[ZDIM]; k != ub[ZDIM]; ++k) {
+						const integer iii = hindex(i, j, k);
+						V[sx_i][iii] -= X[YDIM][iii] * omega;
+						V[sy_i][iii] += X[XDIM][iii] * omega;
+						V[zz_i][iii] += sqr(dx) * omega / 6.0;
+						dVdx[YDIM][sx_i][iii] -= dx * omega;
+						dVdx[XDIM][sy_i][iii] += dx * omega;
+					}
 				}
 			}
 		}
@@ -2368,10 +2374,11 @@ void grid::reconstruct() {
 					} else if (face == FYM) {
 						y0 = -HALF * dx;
 					}
-
-					Ufface[sx_i][iii] -= omega * (X[YDIM][iii] + y0) * Uffacerho_iii;
-					Ufface[sy_i][iii] += omega * (X[XDIM][iii] + x0) * Uffacerho_iii;
-					Ufface[zz_i][iii] += sqr(dx) * omega * Uffacerho_iii / 6.0;
+					if( !opts().alt_vel_recon ) {
+						Ufface[sx_i][iii] -= omega * (X[YDIM][iii] + y0) * Uffacerho_iii;
+						Ufface[sy_i][iii] += omega * (X[XDIM][iii] + x0) * Uffacerho_iii;
+						Ufface[zz_i][iii] += sqr(dx) * omega * Uffacerho_iii / 6.0;
+					}
 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sx_i][iii]) / Uffacerho_iii;
 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sy_i][iii]) / Uffacerho_iii;
 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sz_i][iii]) / Uffacerho_iii;
