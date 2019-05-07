@@ -82,12 +82,14 @@ set(source_files
     src/roe.cpp
     src/scf_data.cpp
     src/scf_data.cpp
-    src/silo.cpp
     src/stack_trace.cpp
     src/taylor.cpp
     src/util.cpp
     src/common_kernel/interactions_iterators.cpp
     src/cuda_util/cuda_scheduler.cpp
+    src/disk_io/silo_common.cpp
+    src/disk_io/silo_in.cpp
+    src/disk_io/silo_out.cpp
     src/monopole_interactions/cuda_p2p_interaction_interface.cpp
     src/monopole_interactions/p2p_cuda_kernel.cu
     src/monopole_interactions/p2p_cpu_kernel.cpp

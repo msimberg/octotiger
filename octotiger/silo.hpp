@@ -12,6 +12,8 @@
 #include "octotiger/real.hpp"
 
 #include <hpx/include/naming.hpp>
+#include "octotiger/node_location.hpp"
+
 
 #include <cstddef>
 #include <string>
@@ -19,6 +21,16 @@
 #include <vector>
 
 #include <silo.h>
+
+#define SILO_DRIVER DB_HDF5
+#define SILO_VERSION 101
+
+#ifndef IN_SILO_COMMON
+extern real output_time;
+extern real output_rotation_count;
+extern int epoch;
+extern int timestamp;
+#endif
 
 class node_server;
 
@@ -81,5 +93,47 @@ void output_all(std::string fname, int cycle, bool);
 void load_options_from_silo(std::string fname, DBfile* = NULL);
 
 void load_data_from_silo(std::string fname, node_server*, hpx::id_type);
+
+
+
+static inline std::string oct_to_str(node_location::node_id n) {
+	return hpx::util::format("{:llo}", n);
+}
+
+static inline std::string outflow_name(const std::string& varname) {
+	return varname + std::string("_outflow");
+}
+
+
+template<class T>
+struct db_type {
+	static constexpr int d = DB_UNKNOWN;
+};
+
+template<>
+struct db_type<integer> {
+	static constexpr int d = DB_LONG_LONG;
+};
+
+template<>
+struct db_type<real> {
+	static constexpr int d = DB_DOUBLE;
+};
+
+template<>
+struct db_type<char> {
+	static constexpr int d = DB_CHAR;
+};
+
+
+
+template<>
+struct db_type<std::int8_t> {
+	static constexpr int d = DB_CHAR;
+};
+
+constexpr int db_type<integer>::d;
+constexpr int db_type<char>::d;
+constexpr int db_type<real>::d;
 
 #endif /* SRC_SILO_HPP_ */
