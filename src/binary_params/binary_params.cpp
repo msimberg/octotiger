@@ -20,6 +20,17 @@
 #define STAR1 2
 #define STAR2 3
 
+template<class T>
+void normalize3(T& vec) {
+	double sum = 0.0;
+	for( int d = 0; d < 3; d++) {
+		sum += vec[d] * vec[d];
+	}
+	sum = 1.0 / sqrt(sum);
+	for( int d = 0; d < 3; d++) {
+		vec[d] *= sum;
+	}
+}
 
 template<class T = double>
 using array_type = std::vector<T>;
@@ -400,6 +411,9 @@ int main(int argc, char* argv[]) {
 
 	const auto& sx = var_map_["sx"];
 	const auto& sy = var_map_["sy"];
+	const auto& gx = var_map_["gx"];
+	const auto& gy = var_map_["gy"];
+	const auto& gz = var_map_["gz"];
 	const auto& tau = var_map_["tau"];
 
 	double M[4] = {0,0,0,0};
@@ -412,7 +426,7 @@ int main(int argc, char* argv[]) {
 		for( int i = 0; i < phi.size(); i++ ) {
 			double R2 = x_[i] * x_[i] + y_[i] * y_[i];
 			double phi_eff = phi[i] - 0.5 * R2 * omega;
-			double g1, g2;
+			double g1 = 0, g2 = 0;
 			std::array<double, 3> d1, d2;
 			d1[0] = x_[c1i] - x_[i];
 			d1[1] = y_[c1i] - y_[i];
@@ -420,13 +434,14 @@ int main(int argc, char* argv[]) {
 			d2[0] = x_[c2i] - x_[i];
 			d2[1] = y_[c2i] - y_[i];
 			d2[2] = z_[c2i] - z_[i];
-			g1 = g2 = 0.0;
-			g1 += d1[0] * x_[c1i];
-			g1 += d1[1] * y_[c1i];
-			g1 += d1[2] * z_[c1i];
-			g2 += d2[0] * x_[c2i];
-			g2 += d2[1] * y_[c2i];
-			g2 += d2[2] * z_[c2i];
+			normalize3(d1);
+			normalize3(d2);
+			g1 += (gx[i] + omega * omega * x_[i]) * d1[0];
+			g1 += (gy[i] + omega * omega * y_[i]) * d1[1];
+			g1 += (gz[i]) * d1[2];
+			g2 += (gx[i] + omega * omega * x_[i]) * d2[0];
+			g2 += (gy[i] + omega * omega * y_[i]) * d2[1];
+			g2 += (gz[i]) * d2[2];
 			int v;
 			std::array<double,3> pivot;
 	//		if( phi_eff < l1) {
