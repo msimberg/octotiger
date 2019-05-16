@@ -15,19 +15,20 @@
 #include <cmath>
 #include <unordered_map>
 
+#define NDIM 3
+
 #define NOSTAR 0
-#define COMMON_ENVELOPE 1
-#define STAR1 2
-#define STAR2 3
+#define STAR1 1
+#define STAR2 2
 
 template<class T>
 void normalize3(T& vec) {
 	double sum = 0.0;
-	for( int d = 0; d < 3; d++) {
+	for (int d = 0; d < 3; d++) {
 		sum += vec[d] * vec[d];
 	}
 	sum = 1.0 / sqrt(sum);
-	for( int d = 0; d < 3; d++) {
+	for (int d = 0; d < 3; d++) {
 		vec[d] *= sum;
 	}
 }
@@ -38,7 +39,8 @@ using array_type = std::vector<T>;
 using map_type = std::unordered_map<std::string, array_type<>>;
 
 map_type var_map_;
-array_type<> x_, y_, z_, dx_;
+array_type<std::array<double, NDIM>> X_;
+array_type<> dx_;
 array_type<bool> in_plane_;
 array_type<bool> in_loc_;
 array_type<double> loc_x_;
@@ -47,28 +49,46 @@ array_type<int> in_star_;
 
 static DBfile* db_;
 
-std::array<double, 3> find_com() {
-	std::array<double, 3> com = { { 0, 0, 0 } };
+std::array<double, NDIM> find_com() {
+	std::array<double, NDIM> com = { { 0, 0, 0 } };
 	double mtot;
 	const auto& rho = var_map_["rho"];
 	for (int i = 0; i < rho.size(); i++) {
 		const double V = std::pow(dx_[i], 3);
 		const double M = V * rho[i];
-		const double x = x_[i];
-		const double y = y_[i];
-		const double z = z_[i];
 		mtot += M;
-		com[0] += x * M;
-		com[1] += y * M;
-		com[2] += z * M;
+		for (int d = 0; d < NDIM; d++) {
+			com[d] += X_[i][d] * M;
+		}
 	}
-	com[0] /= mtot;
-	com[1] /= mtot;
-	com[2] /= mtot;
+	for (int d = 0; d < NDIM; d++) {
+		com[d] /= mtot;
+	}
 	return com;
 }
 
-double find_omega(std::array<double, 3> com) {
+std::array<double, NDIM> find_vcom() {
+	std::array<double, NDIM> vcom = { { 0, 0, 0 } };
+	double mtot;
+	const auto& rho = var_map_["rho"];
+	const auto& sx = var_map_["sx"];
+	const auto& sy = var_map_["sy"];
+	const auto& sz = var_map_["sz"];
+	for (int i = 0; i < rho.size(); i++) {
+		const double V = std::pow(dx_[i], 3);
+		const double M = V * rho[i];
+		mtot += M;
+		vcom[0] += sx[i] * V;
+		vcom[1] += sy[i] * V;
+		vcom[2] += sz[i] * V;
+	}
+	for (int d = 0; d < NDIM; d++) {
+		vcom[d] /= mtot;
+	}
+	return vcom;
+}
+
+double find_omega(std::array<double, NDIM> com) {
 	const auto& rho = var_map_["rho"];
 	const auto& sx = var_map_["sx"];
 	const auto& sy = var_map_["sy"];
@@ -77,12 +97,15 @@ double find_omega(std::array<double, 3> com) {
 	for (int i = 0; i < rho.size(); i++) {
 		if (rho[i] > 1.) {
 			const double V = std::pow(dx_[i], 3);
-			const double x = x_[i] - com[0];
-			const double y = y_[i] - com[1];
-			const double r2 = x * x + y * y;
-			const double this_omega = (x * sy[i] - y * sx[i]) / r2 / rho[i];
+			std::array<double, NDIM> X;
+			for (int d = 0; d < NDIM; d++) {
+				X[d] = X_[i][d] - com[d];
+			}
+			const double r2 = X[0] * X[0] + X[1] * X[1];
+			const double this_omega = (X[0] * sy[i] - X[1] * sx[i]) / r2
+					/ rho[i];
 			I += rho[i] * V * r2;
-			l += (x * sy[i] - y * sx[i]) * V;
+			l += (X[0] * sy[i] - X[1] * sx[i]) * V;
 		}
 
 	}
@@ -97,9 +120,7 @@ void tag_loc(std::array<double, 2> loc, std::array<double, 3> a) {
 	n[1] = loc[1];
 	n[2] = 0;
 	for (int i = 0; i < rho.size(); i++) {
-		p[0] = x_[i];
-		p[1] = y_[i];
-		p[2] = z_[i];
+		const auto p = X_[i];
 		double amp[3];
 		double ampdotn;
 		for (int d = 0; d < 3; d++) {
@@ -133,8 +154,8 @@ double find_eigenvector(std::array<double, 2>& e) {
 	for (int i = 0; i < rho.size(); i++) {
 		const double V = std::pow(dx_[i], 3);
 		const double M = V * rho[i];
-		const double x = x_[i];
-		const double y = y_[i];
+		const double x = X_[i][0];
+		const double y = X_[i][1];
 		q[0][0] += x * x * M;
 		q[0][1] += x * y * M;
 		q[1][0] += y * x * M;
@@ -184,7 +205,8 @@ double sum_all(const std::string var_name) {
 	return sum;
 }
 
-std::pair<double, int> max_all(const std::string var_name, bool plane_only = false) {
+std::pair<double, int> max_all(const std::string var_name, bool plane_only =
+		false) {
 	const auto var = var_map_[var_name];
 	double max = -std::numeric_limits<double>::max();
 	int max_i = 0;
@@ -199,7 +221,8 @@ std::pair<double, int> max_all(const std::string var_name, bool plane_only = fal
 	return std::pair<double, int>(max, max_i);
 }
 
-std::pair<double, int> min_all(const std::string var_name, bool plane_only = false) {
+std::pair<double, int> min_all(const std::string var_name, bool plane_only =
+		false) {
 	const auto var = var_map_[var_name];
 	double min = +std::numeric_limits<double>::max();
 	int min_i = 0;
@@ -215,7 +238,9 @@ std::pair<double, int> min_all(const std::string var_name, bool plane_only = fal
 }
 
 std::string strip_nonnumeric(std::string&& s) {
-	s.erase(std::remove_if(s.begin(), s.end(), [](char c) {return c < '0' || c > '9';}), s.end());
+	s.erase(
+			std::remove_if(s.begin(), s.end(),
+					[](char c) {return c < '0' || c > '9';}), s.end());
 	return std::move(s);
 }
 
@@ -230,7 +255,7 @@ int main(int argc, char* argv[]) {
 
 	printf("Opening SILO\n");
 	std::string filename = argv[1];
-	db_ = DBOpenReal(filename.c_str(), DB_HDF5, DB_READ );
+	db_ = DBOpenReal(filename.c_str(), DB_HDF5, DB_READ);
 
 	if (db_ == nullptr) {
 		printf("Unable to open %s\n", filename.c_str());
@@ -253,7 +278,7 @@ int main(int argc, char* argv[]) {
 
 	printf("Reading table of contents\n");
 	DBmultimesh* mmesh = DBGetMultimesh(db_, "quadmesh");
-	std::vector < std::string > dir_names;
+	std::vector<std::string> dir_names;
 	for (int i = 0; i < mmesh->nblocks; i++) {
 		const std::string dir = strip_nonnumeric(mmesh->meshnames[i]);
 		dir_names.push_back(dir);
@@ -278,7 +303,8 @@ int main(int argc, char* argv[]) {
 			auto& data = var_map_[qvar];
 			data.resize(data.size() + sz);
 			double* dest = &(data[data.size() - sz]);
-			if (version == 100 && (qvar == "sx" || qvar == "sy" || qvar == "sz")) {
+			if (version == 100
+					&& (qvar == "sx" || qvar == "sy" || qvar == "sz")) {
 				for (int k = 0; k < sz; k++) {
 					(((double**) var->vals)[0])[k] *= code_to_s;
 				}
@@ -295,9 +321,9 @@ int main(int argc, char* argv[]) {
 		for (int l = 0; l < mesh->dims[2] - 1; l++) {
 			for (int k = 0; k < mesh->dims[1] - 1; k++) {
 				for (int j = 0; j < mesh->dims[0] - 1; j++) {
-					x_.push_back(xc[j] + 0.5 * dx);
-					y_.push_back(yc[k] + 0.5 * dx);
-					z_.push_back(zc[l] + 0.5 * dx);
+					std::array<double, NDIM> this_X = { xc[j] + 0.5 * dx, yc[k]
+							+ 0.5 * dx, zc[l] + 0.5 * dx, };
+					X_.push_back(this_X);
 					dx_.push_back(dx);
 					const bool in_plane = std::abs(zc[l] - 0.5 * dx) < dx;
 					in_plane_.push_back(in_plane);
@@ -328,15 +354,15 @@ int main(int argc, char* argv[]) {
 	auto rho_min = min_all("rho").first;
 	rho_mid_ = std::sqrt(rho_max * rho_min);
 
-	printf( "rho_max = %e\n", rho_max);
-	printf( "rho_mid = %e\n", rho_mid_);
-	printf( "rho_min = %e\n", rho_min);
+	printf("rho_max = %e\n", rho_max);
+	printf("rho_mid = %e\n", rho_mid_);
+	printf("rho_min = %e\n", rho_min);
 
 	auto c1i = max_all("rho_1").second;
 	auto c2i = max_all("rho_3").second;
 
-	printf("c1 at %e %e %e\n", x_[c1i], y_[c1i], z_[c1i]);
-	printf("c2 at %e %e %e\n", x_[c2i], y_[c2i], z_[c2i]);
+	printf("c1 at %e %e %e\n", X_[c1i][0], X_[c1i][1], X_[c1i][2]);
+	printf("c2 at %e %e %e\n", X_[c2i][0], X_[c2i][1], X_[c2i][2]);
 
 	printf("Mass sum = %e\n", sum_all("rho_1") / 2e33);
 	printf("Mass sum = %e\n", sum_all("rho_2") / 2e33);
@@ -345,6 +371,7 @@ int main(int argc, char* argv[]) {
 	printf("Mass sum = %e\n", sum_all("rho_5") / 2e33);
 
 	auto com = find_com();
+	auto vcom = find_vcom();
 
 	printf("Center of Mass = %e %e %e\n", com[0], com[1], com[2]);
 
@@ -370,34 +397,35 @@ int main(int argc, char* argv[]) {
 	printf("Omega = %e\n", omega);
 	printf("Period = %e days\n", period);
 
-
 	double l1 = -std::numeric_limits<double>::max();
 	double l2 = -std::numeric_limits<double>::max();
 	double l3 = -std::numeric_limits<double>::max();
 	double l1_loc, l2_loc, l3_loc;
 
-	double c1_loc = x_[c1i] * loc[0] + y_[c1i] * loc[1];
-	double c2_loc = x_[c2i] * loc[0] + y_[c2i] * loc[1];
+	double c1_loc = X_[c1i][0] * loc[0] + X_[c1i][1] * loc[1];
+	double c2_loc = X_[c2i][0] * loc[0] + X_[c2i][1] * loc[1];
 
 	{
 		const auto& phi = var_map_["phi"];
-		for( int i = 0; i < phi.size(); i++ ) {
-			double this_loc = x_[i] * loc[0] + y_[i] * loc[1];
-			if( in_loc_[i] ) {
-				double phi_eff = -omega * (x_[i] * x_[i] + y_[i] * y_[i]) + phi[i];
+		for (int i = 0; i < phi.size(); i++) {
+			double this_loc = X_[i][0] * loc[0] + X_[i][1] * loc[1];
+			if (in_loc_[i]) {
+				double phi_eff = -omega
+						* (X_[i][0] * X_[i][0] + X_[i][1] * X_[i][1]) + phi[i];
 				double* lptr;
 				double* loc_ptr;
-				if( (c1_loc < c2_loc && this_loc < c1_loc) || (c1_loc > c2_loc && this_loc > c1_loc) ) {
+				if ((c1_loc < c2_loc && this_loc < c1_loc)
+						|| (c1_loc > c2_loc && this_loc > c1_loc)) {
 					lptr = &l3;
 					loc_ptr = &l3_loc;
-				}  else if( (this_loc - c1_loc) * (this_loc - c2_loc) <= 0.0 ) {
+				} else if ((this_loc - c1_loc) * (this_loc - c2_loc) <= 0.0) {
 					lptr = &l1;
 					loc_ptr = &l1_loc;
 				} else {
 					lptr = &l2;
 					loc_ptr = &l2_loc;
 				}
-				if( phi_eff > *lptr ) {
+				if (phi_eff > *lptr) {
 					*lptr = phi_eff;
 					*loc_ptr = this_loc;
 				}
@@ -405,104 +433,142 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	printf( "L1 = %e @ %e\n", l1, l1_loc );
-	printf( "L2 = %e @ %e\n", l2, l2_loc );
-	printf( "L3 = %e @ %e\n", l3, l3_loc );
+	printf("L1 = %e @ %e\n", l1, l1_loc);
+	printf("L2 = %e @ %e\n", l2, l2_loc);
+	printf("L3 = %e @ %e\n", l3, l3_loc);
 
 	const auto& sx = var_map_["sx"];
 	const auto& sy = var_map_["sy"];
+	const auto& sz = var_map_["sz"];
 	const auto& gx = var_map_["gx"];
 	const auto& gy = var_map_["gy"];
 	const auto& gz = var_map_["gz"];
 	const auto& tau = var_map_["tau"];
 
-	double M[4] = {0,0,0,0};
-	double spin[4] = {0,0,0,0};
+#define NREGION 3
+
+	double M[NREGION] = { 0, 0, 0 };
+	double spin[NREGION] = { 0, 0, 0 };
 	double lorb = 0.0;
-	double heat = 0.0;
-	FILE* fp = fopen( "roche.txt", "wt");
+	system( "rm star2.txt");
+	FILE* fp = fopen("roche.txt", "wt");
+	FILE* fp2 = fopen( "star2.txt", "at");
 	{
+
 		const auto& phi = var_map_["phi"];
-		for( int i = 0; i < phi.size(); i++ ) {
-			double R2 = x_[i] * x_[i] + y_[i] * y_[i];
+		for (int i = 0; i < phi.size(); i++) {
+			double R2 = X_[i][0] * X_[i][0] + X_[i][1] * X_[i][1];
 			double phi_eff = phi[i] - 0.5 * R2 * omega;
 			double g1 = 0, g2 = 0;
 			std::array<double, 3> d1, d2;
-			d1[0] = x_[c1i] - x_[i];
-			d1[1] = y_[c1i] - y_[i];
-			d1[2] = z_[c1i] - z_[i];
-			d2[0] = x_[c2i] - x_[i];
-			d2[1] = y_[c2i] - y_[i];
-			d2[2] = z_[c2i] - z_[i];
+			for (int d = 0; d < NDIM; d++) {
+				d1[d] = X_[c1i][d] - X_[i][d];
+				d2[d] = X_[c2i][d] - X_[i][d];
+			}
 			normalize3(d1);
 			normalize3(d2);
-			g1 += (gx[i] + omega * omega * x_[i]) * d1[0];
-			g1 += (gy[i] + omega * omega * y_[i]) * d1[1];
+			g1 += (gx[i] + omega * omega * X_[i][0]) * d1[0];
+			g1 += (gy[i] + omega * omega * X_[i][1]) * d1[1];
 			g1 += (gz[i]) * d1[2];
-			g2 += (gx[i] + omega * omega * x_[i]) * d2[0];
-			g2 += (gy[i] + omega * omega * y_[i]) * d2[1];
+			g2 += (gx[i] + omega * omega * X_[i][0]) * d2[0];
+			g2 += (gy[i] + omega * omega * X_[i][1]) * d2[1];
 			g2 += (gz[i]) * d2[2];
 			int v;
-			std::array<double,3> pivot;
-	//		if( phi_eff < l1) {
-				if( g1 >= 0 && g2 >=0 ) {
-					if( g1 > g2) {
-						v = STAR1;
-					} else {
-						v = STAR2;
-					}
-				} else if( g1 >= 0 ) {
+			std::array<double, 3> pivot;
+			if (g1 >= 0 && g2 >= 0) {
+				if (g1 > g2) {
 					v = STAR1;
-				} else if( g2 >= 0 ) {
+				} else {
 					v = STAR2;
-				} else {
-					v = NOSTAR;
 				}
-		/*	} else  {
-				if( g1 >= 0 || g2 >=0 ) {
-					v = COMMON_ENVELOPE;
-				} else {
-					v = NOSTAR;
-				}
-			}*/
-			if( v == STAR1 ) {
-				pivot[0] = x_[c1i];
-				pivot[1] = y_[c1i];
-				pivot[2] = z_[c1i];
-			} else if( v == STAR2 ) {
-				pivot[0] = x_[c2i];
-				pivot[1] = y_[c2i];
-				pivot[2] = z_[c2i];
+			} else if (g1 >= 0) {
+				v = STAR1;
+			} else if (g2 >= 0) {
+				v = STAR2;
 			} else {
-				pivot = com;
+				v = NOSTAR;
 			}
-			double arm[2];
-			arm[0] = x_[i] - pivot[0];
-			arm[1] = y_[i] - pivot[1];
-			const double vol = dx_[i] * dx_[i] * dx_[i];
-			M[v] += rho[i] * vol;
-			spin[v] += (sx[i] * arm[1] - sy[i] * arm[0])*vol;
-			arm[0] = x_[i] - com[0];
-			arm[1] = y_[i] - com[1];
-			if( v == STAR1 || v == STAR2 ) {
-				lorb += (sx[i] * arm[1] - sy[i] * arm[0])*vol;
-			}
-			heat += std::pow(tau[i],5./3.) * vol;
 			in_star_.push_back(v);
-			fprintf( fp, "%e %e %e %i\n", x_[i], y_[i], z_[i], v);
 		}
 
+		std::array<std::array<double, NDIM>, NREGION> this_com;
+		std::array<std::array<double, NDIM>, NREGION> this_vcom;
+
+		for (int f = 0; f < NREGION; f++) {
+			for (int d = 0; d < NDIM; d++) {
+				this_com[f][d] = this_vcom[f][d];
+			}
+		}
+
+		for (int i = 0; i < phi.size(); i++) {
+			const auto v = in_star_[i];
+			const double vol = dx_[i] * dx_[i] * dx_[i];
+			for (int d = 0; d < NDIM; d++) {
+				this_com[v][d] += rho[i] * X_[i][d] * vol;
+			}
+			this_vcom[v][0] += sx[i] * vol;
+			this_vcom[v][1] += sy[i] * vol;
+			this_vcom[v][2] += sz[i] * vol;
+			M[v] += rho[i] * vol;
+		}
+
+		for (int f = 0; f < NREGION; f++) {
+			for (int d = 0; d < NDIM; d++) {
+				this_com[f][d] /= M[f];
+				this_vcom[f][d] /= M[f];
+			}
+		}
+
+
+		for (int i = 0; i < phi.size(); i++) {
+			const auto v = in_star_[i];
+
+			const double vol = dx_[i] * dx_[i] * dx_[i];
+			std::array<double, NDIM> R;
+			for (int d = 0; d < NDIM; d++) {
+				R[d] = X_[i][d] - this_com[v][d];
+			}
+			const auto ds = (sy[i] * R[0] - sx[i] * R[1]) * vol;
+			spin[v] += ds;
+			if (v == STAR1 || v == STAR2) {
+				for (int d = 0; d < NDIM; d++) {
+					R[d] = X_[i][d] - com[d];
+				}
+				const auto ds = (sy[i] * R[0] - sx[i] * R[1]) * vol;
+				lorb += ds;
+			}
+
+			if( v == STAR2 && rho[i] > 1.0e-6 ) {
+				double R2 = 0.0;
+				for (int d = 0; d < 2; d++) {
+					R[d] = X_[i][d] - this_com[v][d];
+					R2 += R[d] * R[d];
+				}
+				const auto this_omega = ((sy[i] * R[0] - sx[i] * R[1]) / rho[i] - (this_vcom[v][1] * R[0] - this_vcom[v][0] * R[1])) / R2;
+				fprintf( fp2, "%e %e\n", std::sqrt(R2), this_omega );
+			}
+
+		}
+
+
 	}
-	lorb -= spin[3] + spin[2];
+
+	lorb -= spin[STAR2] + spin[STAR1];
 	fclose(fp);
+	fclose(fp2);
 #define sqr(a) ((a)*(a))
 
-	for( int f = 0; f < 4; f++) {
+	for (int f = 0; f < NREGION; f++) {
 		M[f] /= 1.99e+33;
 	}
-	double sep = std::sqrt(sqr(x_[c1i] - x_[c2i]) + sqr(y_[c1i] - y_[c2i]) + sqr(z_[c1i] - z_[c2i]));
-	fp = fopen( "binary.txt", "at");
-	fprintf( fp, "%e %e %e %e %e %e %e %e %e\n", cgs_time, M[0], M[2], M[3], sep, spin[2], spin[3], lorb, heat );
+	double sep =
+			std::sqrt(
+					sqr(
+							X_[c1i][0]
+									- X_[c2i][0]) + sqr(X_[c1i][1] - X_[c2i][1]) + sqr(X_[c1i][2] - X_[c2i][2]));
+	fp = fopen("binary.txt", "at");
+	fprintf(fp, "%e %e %e %e %e %e %e %e\n", cgs_time, M[0], M[1], M[2], sep,
+			spin[1], spin[2], lorb);
 	fclose(fp);
 	/* Close SILO */
 
