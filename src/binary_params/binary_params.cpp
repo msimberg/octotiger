@@ -452,7 +452,7 @@ int main(int argc, char* argv[]) {
 	double lorb = 0.0;
 	system( "rm star2.txt");
 	FILE* fp = fopen("roche.txt", "wt");
-	FILE* fp2 = fopen( "star2.txt", "at");
+	double T = 0.0, W = 0.0;
 	{
 
 		const auto& phi = var_map_["phi"];
@@ -545,7 +545,8 @@ int main(int argc, char* argv[]) {
 					R2 += R[d] * R[d];
 				}
 				const auto this_omega = ((sy[i] * R[0] - sx[i] * R[1]) / rho[i] - (this_vcom[v][1] * R[0] - this_vcom[v][0] * R[1])) / R2;
-				fprintf( fp2, "%e %e\n", std::sqrt(R2), this_omega );
+				T += std::pow(this_omega, 2) * R2 * rho[i] * vol;
+				W += phi[i] * rho[i] * vol;
 			}
 
 		}
@@ -555,7 +556,6 @@ int main(int argc, char* argv[]) {
 
 	lorb -= spin[STAR2] + spin[STAR1];
 	fclose(fp);
-	fclose(fp2);
 #define sqr(a) ((a)*(a))
 
 	for (int f = 0; f < NREGION; f++) {
@@ -567,8 +567,8 @@ int main(int argc, char* argv[]) {
 							X_[c1i][0]
 									- X_[c2i][0]) + sqr(X_[c1i][1] - X_[c2i][1]) + sqr(X_[c1i][2] - X_[c2i][2]));
 	fp = fopen("binary.txt", "at");
-	fprintf(fp, "%e %e %e %e %e %e %e %e\n", cgs_time, M[0], M[1], M[2], sep,
-			spin[1], spin[2], lorb);
+	fprintf(fp, "%e %e %e %e %e %e %e %e %e\n", cgs_time, M[0], M[1], M[2], sep,
+			spin[1], spin[2], lorb, T / -W);
 	fclose(fp);
 	/* Close SILO */
 
