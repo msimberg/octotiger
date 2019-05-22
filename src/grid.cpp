@@ -2144,8 +2144,6 @@ void grid::reconstruct() {
 		if (field >= zx_i && field <= zz_i) {
 			continue;
 		}
-		// TODO: Remove these unused variables
-		//real theta_x, theta_y, theta_z;
 		std::vector<real> const& Vfield = V[field];
 #pragma GCC ivdep
 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
@@ -2168,63 +2166,94 @@ void grid::reconstruct() {
 		}
 	};
 
+
+	auto discontinuity_detector = []( double um2, double um1, double u0, double up1, double up2, double taum, double taup ) {
+
+		constexpr double eta1 = 20.0;
+		constexpr double eta2 = 0.05;
+		constexpr double eps = 0.01;
+		constexpr double K0 = 0.1;
+	
+		const double d2m = (um2 + u0) - 2.0 * um1; 
+		const double d2p = (up2 + u0) - 2.0 * up1; 
+		const double du = 0.5 * (up1 - um1);
+		
+		double eta;
+
+		const auto log_dif = []( double a, double b ) {
+			return std::abs(a-b) / std::min(std::abs(a),std::abs(b));
+		};
+
+
+		if (	(du != 0.0) && 
+			(d2p * d2m < 0.0) &&
+			(std::abs(du) > eps * std::min(std::abs(up1), std::abs(um1))) &&
+			(K0  > std::abs( (std::log(taup) - std::log(taum)) / (std::log(up1) - std::log(um1)) ) )
+		) {
+			eta = -(d2p - d2m) / du;
+			eta = std::max(std::min(eta1 * (eta - eta2), 1.), 0.);
+		} else {
+			eta = 0.0;
+		}
+		return eta;
+	};
+
+
 	for (integer field = 0; field != opts().n_fields; ++field) {
 		std::vector<real>& Vfield = V[field];
 
-		std::vector<real>& UfFXPfield = Uf[FXP][field];
-		std::vector<real>& UfFXMfield = Uf[FXM][field];
-		std::vector<real> const& slpxfield = slpx[field];
 
 		if (field >= zx_i && field <= zz_i) {
 			continue;
 		}
+
+		const integer D[NDIM] = {H_DNX,H_DNY,H_DNZ};
+		const decltype(&slpx) slp_ptr[NDIM] = {&slpx, &slpy, &slpz};
+
+		for( integer dir = 0; dir < NDIM; dir++ ) {
+			std::vector<real>& UfFPfield = Uf[FXP + 2 * dir][field];
+			std::vector<real>& UfFMfield = Uf[FXM + 2 * dir][field];
+			std::vector<real> const& slpfield = (*slp_ptr[dir])[field];
 #pragma GCC ivdep
-		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-			UfFXPfield[iii] = UfFXMfield[iii + H_DNX] = average(
-					Vfield[iii + H_DNX], Vfield[iii]);
-		}
+			for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
+				UfFPfield[iii] = UfFMfield[iii + D[dir]] = average(
+						Vfield[iii + D[dir]], Vfield[iii]);
+			}
+			if( field == rho_i || (field >= spc_i && field < spc_i + opts().n_species) ) {
 #pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sx = slpxfield[iii];
-			UfFXPfield[iii] += (-(slpxfield[iii + H_DNX] - sx) / 3.0) * HALF;
-			UfFXMfield[iii] += ((slpxfield[iii - H_DNX] - sx) / 3.0) * HALF;
-			limit_slope(UfFXMfield[iii], Vfield[iii], UfFXPfield[iii]);
+				for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+					const real& s0 = slpfield[iii];
+					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
+					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
+					const auto eta = discontinuity_detector(
+						U[field][iii - 2 * D[dir]],
+						U[field][iii - 1 * D[dir]],
+						U[field][iii + 0 * D[dir]],
+						U[field][iii + 1 * D[dir]],
+						U[field][iii + 2 * D[dir]],
+						U[tau_i][iii - 1 * D[dir]],
+						U[tau_i][iii + 1 * D[dir]]
+					);
+					UfFMfield[iii] += eta * (U[field][iii - D[dir]] + 0.5 * slpfield[iii - D[dir]] - UfFMfield[iii]);
+					UfFPfield[iii] += eta * (U[field][iii + D[dir]] - 0.5 * slpfield[iii + D[dir]] - UfFPfield[iii]);
+					limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
+				}
+			} else {
+#pragma GCC ivdep
+				for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+					const real& s0 = slpfield[iii];
+					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
+					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
+					limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
+				}
+			}
+
 		}
 
-		std::vector<real>& UfFYPfield = Uf[FYP][field];
-		std::vector<real>& UfFYMfield = Uf[FYM][field];
-		std::vector<real> const& slpyfield = slpy[field];
-
-#pragma GCC ivdep
-		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-			UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(
-					Vfield[iii + H_DNY], Vfield[iii]);
-		}
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sy = slpyfield[iii];
-			UfFYPfield[iii] += (-(slpyfield[iii + H_DNY] - sy) / 3.0) * HALF;
-			UfFYMfield[iii] += ((slpyfield[iii - H_DNY] - sy) / 3.0) * HALF;
-			limit_slope(UfFYMfield[iii], Vfield[iii], UfFYPfield[iii]);
-		}
-
-		std::vector<real>& UfFZPfield = Uf[FZP][field];
-		std::vector<real>& UfFZMfield = Uf[FZM][field];
-		std::vector<real> const& slpzfield = slpz[field];
-
-#pragma GCC ivdep
-		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-			UfFZPfield[iii] = UfFZMfield[iii + H_DNZ] = average(
-					Vfield[iii + H_DNZ], Vfield[iii]);
-		}
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sz = slpzfield[iii];
-			UfFZPfield[iii] += (-(slpzfield[iii + H_DNZ] - sz) / 3.0) * HALF;
-			UfFZMfield[iii] += ((slpzfield[iii - H_DNZ] - sz) / 3.0) * HALF;
-			limit_slope(UfFZMfield[iii], Vfield[iii], UfFZPfield[iii]);
-		}
 	}
+
+
+
 	for (integer iii = 0; iii != H_N3; ++iii) {
 
 		slpx[sy_i][iii] = Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii];
