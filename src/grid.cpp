@@ -2174,8 +2174,8 @@ void grid::reconstruct() {
 		constexpr double eps = 0.01;
 		constexpr double K0 = 0.1;
 	
-		const double d2m = (um2 + u0) - 2.0 * um1; 
-		const double d2p = (up2 + u0) - 2.0 * up1; 
+		const double d2m = ((um2 + u0) - 2.0 * um1)/6.0; 
+		const double d2p = ((up2 + u0) - 2.0 * up1)/6.0; 
 		const double du = 0.5 * (up1 - um1);
 		
 		double eta;
