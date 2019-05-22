@@ -2230,39 +2230,33 @@ void grid::reconstruct() {
 			std::vector<real>& UfFPfield = Uf[FXP + 2 * dir][field];
 			std::vector<real>& UfFMfield = Uf[FXM + 2 * dir][field];
 			std::vector<real> const& slpfield = (*slp_ptr[dir])[field];
+			const auto DS = D[dir];
 #pragma GCC ivdep
-			for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-				UfFPfield[iii] = UfFMfield[iii + D[dir]] = average(
-						Vfield[iii + D[dir]], Vfield[iii]);
+			for (integer iii = H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
+				UfFPfield[iii] = UfFMfield[iii + DS] = 
+				             (Vfield[iii+DS]     + Vfield[iii]  ) / 2.0 -
+				             (slpfield[iii + DS] - slpfield[iii]) / 6.0;
 			}
 			if( can_have_contact_discontinuity(field,dir) ) {
 #pragma GCC ivdep
 				for (integer iii = 2 * H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
-					const real& s0 = slpfield[iii];
-					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
-					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
 					const auto eta = discontinuity_detector(
-						Vfield[iii - 2 * D[dir]],
-						Vfield[iii - 1 * D[dir]],
-						Vfield[iii + 0 * D[dir]],
-						Vfield[iii + 1 * D[dir]],
-						Vfield[iii + 2 * D[dir]],
-						V[tau_i][iii - 1 * D[dir]],
-						V[tau_i][iii + 1 * D[dir]],
+						Vfield[iii - 2 * DS],
+						Vfield[iii - 1 * DS],
+						Vfield[iii + 0 * DS],
+						Vfield[iii + 1 * DS],
+						Vfield[iii + 2 * DS],
+						V[tau_i][iii - 1 * DS],
+						V[tau_i][iii + 1 * DS],
 						field == rho_i
 					);
-					UfFMfield[iii] += eta * (Vfield[iii - D[dir]] + 0.5 * slpfield[iii - D[dir]] - UfFMfield[iii]);
-					UfFPfield[iii] += eta * (Vfield[iii + D[dir]] - 0.5 * slpfield[iii + D[dir]] - UfFPfield[iii]);
-					limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
+					UfFMfield[iii] += eta * (Vfield[iii - DS] + 0.5 * slpfield[iii - DS] - UfFMfield[iii]);
+					UfFPfield[iii] += eta * (Vfield[iii + DS] - 0.5 * slpfield[iii + DS] - UfFPfield[iii]);
 				}
-			} else {
+			}
 #pragma GCC ivdep
-				for (integer iii = 2 * H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
-					const real& s0 = slpfield[iii];
-					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
-					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
-					limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
-				}
+			for (integer iii = 2 * H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
+				limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
 			}
 
 		}
