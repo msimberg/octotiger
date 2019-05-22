@@ -2167,7 +2167,7 @@ void grid::reconstruct() {
 	};
 
 
-	auto discontinuity_detector = []( double um2, double um1, double u0, double up1, double up2, double taum, double taup ) {
+	auto discontinuity_detector = []( double um2, double um1, double u0, double up1, double up2, double taum, double taup, bool check_contact ) {
 
 		constexpr double eta1 = 20.0;
 		constexpr double eta2 = 0.05;
@@ -2180,15 +2180,17 @@ void grid::reconstruct() {
 		
 		double eta;
 
-		const auto log_dif = []( double a, double b ) {
-			return std::abs(a-b) / std::min(std::abs(a),std::abs(b));
-		};
-
+		bool contact;
+		if( check_contact ) {
+			contact = K0 * std::abs(std::log(up1) - std::log(um1))  > std::abs(std::log(taup) - std::log(taum));
+		} else {	
+			contact = true;
+		}
 
 		if (	(du != 0.0) && 
 			(d2p * d2m < 0.0) &&
 			(std::abs(du) > eps * std::min(std::abs(up1), std::abs(um1))) &&
-			(K0  > std::abs( (std::log(taup) - std::log(taum)) / (std::log(up1) - std::log(um1)) ) )
+			contact 
 		) {
 			eta = -(d2p - d2m) / du;
 			eta = std::max(std::min(eta1 * (eta - eta2), 1.), 0.);
@@ -2198,6 +2200,20 @@ void grid::reconstruct() {
 		return eta;
 	};
 
+	const auto can_have_contact_discontinuity = []( integer field, integer dim ) {
+		if( opts().contact_disc ) {
+			if( field == rho_i ) {
+				return true;
+			} else if( field >= spc_i && field < opts().n_species ) {
+				return true;
+			} else if( field >= sx_i && field < sx_i + NDIM ) {
+				if( dim != field - sx_i ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	};
 
 	for (integer field = 0; field != opts().n_fields; ++field) {
 		std::vector<real>& Vfield = V[field];
@@ -2219,28 +2235,29 @@ void grid::reconstruct() {
 				UfFPfield[iii] = UfFMfield[iii + D[dir]] = average(
 						Vfield[iii + D[dir]], Vfield[iii]);
 			}
-			if( field == rho_i || (field >= spc_i && field < spc_i + opts().n_species) ) {
+			if( can_have_contact_discontinuity(field,dir) ) {
 #pragma GCC ivdep
-				for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+				for (integer iii = 2 * H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
 					const real& s0 = slpfield[iii];
 					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
 					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
 					const auto eta = discontinuity_detector(
-						U[field][iii - 2 * D[dir]],
-						U[field][iii - 1 * D[dir]],
-						U[field][iii + 0 * D[dir]],
-						U[field][iii + 1 * D[dir]],
-						U[field][iii + 2 * D[dir]],
-						U[tau_i][iii - 1 * D[dir]],
-						U[tau_i][iii + 1 * D[dir]]
+						Vfield[iii - 2 * D[dir]],
+						Vfield[iii - 1 * D[dir]],
+						Vfield[iii + 0 * D[dir]],
+						Vfield[iii + 1 * D[dir]],
+						Vfield[iii + 2 * D[dir]],
+						V[tau_i][iii - 1 * D[dir]],
+						V[tau_i][iii + 1 * D[dir]],
+						field == rho_i
 					);
-					UfFMfield[iii] += eta * (U[field][iii - D[dir]] + 0.5 * slpfield[iii - D[dir]] - UfFMfield[iii]);
-					UfFPfield[iii] += eta * (U[field][iii + D[dir]] - 0.5 * slpfield[iii + D[dir]] - UfFPfield[iii]);
+					UfFMfield[iii] += eta * (Vfield[iii - D[dir]] + 0.5 * slpfield[iii - D[dir]] - UfFMfield[iii]);
+					UfFPfield[iii] += eta * (Vfield[iii + D[dir]] - 0.5 * slpfield[iii + D[dir]] - UfFPfield[iii]);
 					limit_slope(UfFMfield[iii], Vfield[iii], UfFPfield[iii]);
 				}
 			} else {
 #pragma GCC ivdep
-				for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+				for (integer iii = 2 * H_NX * H_NX; iii != H_N3 - 2 * H_NX * H_NX; ++iii) {
 					const real& s0 = slpfield[iii];
 					UfFPfield[iii] += (-(slpfield[iii + D[dir]] - s0) / 3.0) * HALF;
 					UfFMfield[iii] += ((slpfield[iii - D[dir]] - s0) / 3.0) * HALF;
@@ -2252,76 +2269,78 @@ void grid::reconstruct() {
 
 	}
 
+	if( opts().hydro_am_correct ) {
 
+		for (integer iii = 0; iii != H_N3; ++iii) {
 
-	for (integer iii = 0; iii != H_N3; ++iii) {
+			slpx[sy_i][iii] = Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii];
+			slpx[sz_i][iii] = Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii];
 
-		slpx[sy_i][iii] = Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii];
-		slpx[sz_i][iii] = Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii];
+			slpy[sx_i][iii] = Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii];
+			slpy[sz_i][iii] = Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii];
 
-		slpy[sx_i][iii] = Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii];
-		slpy[sz_i][iii] = Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii];
+			slpz[sx_i][iii] = Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii];
+			slpz[sy_i][iii] = Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii];
+		}
 
-		slpz[sx_i][iii] = Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii];
-		slpz[sy_i][iii] = Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii];
-	}
+		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+			inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
+			inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
+			inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
 
-	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-		inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
-		inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
-		inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
+			step1(slpx[sy_i][iii], V[zz_i][iii]);
+			step1(slpy[sz_i][iii], V[zx_i][iii]);
+			step1(slpz[sx_i][iii], V[zy_i][iii]);
 
-		step1(slpx[sy_i][iii], V[zz_i][iii]);
-		step1(slpy[sz_i][iii], V[zx_i][iii]);
-		step1(slpz[sx_i][iii], V[zy_i][iii]);
+			step2(slpy[sx_i][iii], V[zz_i][iii]);
+			step2(slpz[sy_i][iii], V[zx_i][iii]);
+			step2(slpx[sz_i][iii], V[zy_i][iii]);
 
-		step2(slpy[sx_i][iii], V[zz_i][iii]);
-		step2(slpz[sy_i][iii], V[zx_i][iii]);
-		step2(slpx[sz_i][iii], V[zy_i][iii]);
+			auto wxy = minmod_step(slpx[sy_i][iii], Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii] );
+			auto wxz = minmod_step(slpx[sz_i][iii], Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii] );
 
-		auto wxy = minmod_step(slpx[sy_i][iii], Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii] );
-		auto wxz = minmod_step(slpx[sz_i][iii], Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii] );
+			auto wyx = minmod_step(slpy[sx_i][iii], Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii] );
+			auto wyz = minmod_step(slpy[sz_i][iii], Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii] );
 
-		auto wyx = minmod_step(slpy[sx_i][iii], Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii] );
-		auto wyz = minmod_step(slpy[sz_i][iii], Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii] );
-
-		auto wzx = minmod_step(slpz[sx_i][iii], Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii] );
-		auto wzy = minmod_step(slpz[sy_i][iii], Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii] );
+			auto wzx = minmod_step(slpz[sx_i][iii], Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii] );
+			auto wzy = minmod_step(slpz[sy_i][iii], Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii] );
 
 		//printf( "%e %e %e %e %e %e\n", wxy, wxz, wyx, wyz, wzx, wzy );
 
 
-		Uf[FXP][sy_i][iii] = wxy * Uf[FXP][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
-		Uf[FXM][sy_i][iii] = wxy * Uf[FXM][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
+			Uf[FXP][sy_i][iii] = wxy * Uf[FXP][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
+			Uf[FXM][sy_i][iii] = wxy * Uf[FXM][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
 
-		Uf[FXP][sz_i][iii] = wxz * Uf[FXP][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
-		Uf[FXM][sz_i][iii] = wxz * Uf[FXM][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
+			Uf[FXP][sz_i][iii] = wxz * Uf[FXP][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
+			Uf[FXM][sz_i][iii] = wxz * Uf[FXM][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
 
-		Uf[FYP][sx_i][iii] = wyx * Uf[FYP][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
-		Uf[FYM][sx_i][iii] = wyx * Uf[FYM][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
+			Uf[FYP][sx_i][iii] = wyx * Uf[FYP][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
+			Uf[FYM][sx_i][iii] = wyx * Uf[FYM][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
+	
+			Uf[FYP][sz_i][iii] = wyz * Uf[FYP][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
+			Uf[FYM][sz_i][iii] = wyz * Uf[FYM][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
+	
+			Uf[FZP][sx_i][iii] = wzx * Uf[FZP][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
+			Uf[FZM][sx_i][iii] = wzx * Uf[FZM][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
+	
+			Uf[FZP][sy_i][iii] = wzy * Uf[FZP][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
+			Uf[FZM][sy_i][iii] = wzy * Uf[FZM][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
+	
+			const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
+			const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
+			const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
 
-		Uf[FYP][sz_i][iii] = wyz * Uf[FYP][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
-		Uf[FYM][sz_i][iii] = wyz * Uf[FYM][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
+			const real Vzxi = V[zx_i][iii] - zx_lim * dx;
+			const real Vzyi = V[zy_i][iii] - zy_lim * dx;
+			const real Vzzi = V[zz_i][iii] - zz_lim * dx;
 
-		Uf[FZP][sx_i][iii] = wzx * Uf[FZP][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
-		Uf[FZM][sx_i][iii] = wzx * Uf[FZM][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
-
-		Uf[FZP][sy_i][iii] = wzy * Uf[FZP][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
-		Uf[FZM][sy_i][iii] = wzy * Uf[FZM][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
-
-		const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
-		const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
-		const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
-
-		const real Vzxi = V[zx_i][iii] - zx_lim * dx;
-		const real Vzyi = V[zy_i][iii] - zy_lim * dx;
-		const real Vzzi = V[zz_i][iii] - zz_lim * dx;
-
-		for (int face = 0; face != NFACE; ++face) {
-			Uf[face][zx_i][iii] = Vzxi;
-			Uf[face][zy_i][iii] = Vzyi;
-			Uf[face][zz_i][iii] = Vzzi;
+			for (int face = 0; face != NFACE; ++face) {
+				Uf[face][zx_i][iii] = Vzxi;
+				Uf[face][zy_i][iii] = Vzyi;
+				Uf[face][zz_i][iii] = Vzzi;
+			}
 		}
+
 	}
 
 	for (integer iii = 0; iii != H_N3; ++iii) {

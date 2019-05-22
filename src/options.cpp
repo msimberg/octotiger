@@ -83,6 +83,8 @@ bool options::process_options(int argc, char* argv[]) {
 	("eos", po::value<eos_type>(&(opts().eos))->default_value(IDEAL), "gas equation of state")                              //
 	("hydro", po::value<bool>(&(opts().hydro))->default_value(true), "hydro on/off")    //
 	("radiation", po::value<bool>(&(opts().radiation))->default_value(false), "radiation on/off")    //
+	("hydro_am_correct", po::value<bool>(&(opts().hydro_am_correct))->default_value(true), "hydro AM correction")    //
+	("contact_disc", po::value<bool>(&(opts().contact_disc))->default_value(true), "contact discontinuity detection")    //
 	("rewrite_silo", po::value<bool>(&(opts().rewrite_silo))->default_value(false), "rewrite silo and exit")    //
 	("rad_implicit", po::value<bool>(&(opts().rad_implicit))->default_value(true), "implicit radiation on/off")    //
 	("gravity", po::value<bool>(&(opts().gravity))->default_value(true), "gravity on/off")    //
@@ -224,6 +226,8 @@ bool options::process_options(int argc, char* argv[]) {
 		SHOW(code_to_g);
 		SHOW(code_to_s);
 		SHOW(code_to_cm);
+		SHOW(contact_disc);
+		SHOW(hydro_am_correct);
 
 	}
 	while (atomic_number.size() < opts().n_species) {

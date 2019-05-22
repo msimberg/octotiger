@@ -22,7 +22,7 @@ cmake -DCMAKE_PREFIX_PATH="$HOME/local/$1/hpx" -DCMAKE_CXX_FLAGS="-DBOOST_USE_VA
       -DCMAKE_C_FLAGS="-L$HOME/local/boost/lib" \
       -DCMAKE_BUILD_TYPE=$1                                                                                                                            \
       -DCMAKE_INSTALL_PREFIX="$HOME/local/$1/octotiger"                                   \
-      -DHDF5_ROOT=$HOME/local/hdf5 \
+      -DHDF5_ROOT= /usr/lib/x86_64-linux-gnu/hdf5/serial/\
       -DSilo_DIR=$HOME/local/silo \
       ..
 

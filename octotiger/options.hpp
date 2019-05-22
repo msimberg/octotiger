@@ -25,6 +25,8 @@ COMMAND_LINE_ENUM(eos_type,IDEAL,WD);
 
 class options {
 public:
+	bool contact_disc;
+	bool hydro_am_correct;
 	bool disable_diagnostics;
 	bool bench;
 	bool disable_output;
@@ -90,6 +92,8 @@ public:
 
 	template<class Arc>
 	void serialize(Arc& arc, unsigned) {
+		arc & contact_disc;
+		arc & hydro_am_correct;
 		arc & dual_energy_sw1;
 		arc & dual_energy_sw2;
 		arc & hard_dt;
