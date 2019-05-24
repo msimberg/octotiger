@@ -1802,7 +1802,7 @@ void grid::compute_primitive_slopes(real theta, const std::array<integer, NDIM> 
 				for (integer d0 = 0; d0 != NDIM; ++d0) {
 					for (integer d1 = 0; d1 != NDIM; ++d1) {
 						const real tmp = dV_sym[d0][d1] + dV_ant[d0][d1];
-						dVdx[d0][sx_i + d1][iii] = minmod(tmp, 2.0 / theta * dVdx[d0][sx_i + d1][iii]);
+						dVdx[d0][sx_i + d1][iii] = minmod(tmp, dVdx[d0][sx_i + d1][iii]);
 					}
 				}
 			}
