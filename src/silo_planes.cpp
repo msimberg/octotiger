@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
 			mesh_names.push_back(str);
 			n_total_domains++;
 
-			for (int j = 0; j < this_toc->nvar; j++) {
+			for (int j = 0; j < this_toc->nqvar; j++) {
 				const std::string qvar = this_toc->qvar_names[j];
 				DBquadvar* var = DBGetQuadvar(db_in_, qvar.c_str());
 				if (first_pass) {
@@ -183,24 +183,6 @@ int main(int argc, char* argv[]) {
 		}
 
 		DBFreeQuadmesh(mesh);
-
-		/*
-		 for (int j = 0; j < this_toc->nvar; j++) {
-		 const std::string qvar = this_toc->qvar_names[j];
-		 DBquadvar* var = DBGetQuadvar(db_in_, qvar.c_str());
-		 sz = var->nels;
-		 auto& data = var_map_[qvar];
-		 data.resize(data.size() + sz);
-		 double* dest = &(data[data.size() - sz]);
-		 if (version == 100
-		 && (qvar == "sx" || qvar == "sy" || qvar == "sz")) {
-		 for (int k = 0; k < sz; k++) {
-		 (((double**) var->vals)[0])[k] *= code_to_s;
-		 }
-		 }
-		 std::memcpy(dest, ((double**) var->vals)[0], sizeof(double) * sz);
-		 DBFreeQuadvar(var);
-		 }*/
 
 		DBSetDir(db_in_, "..");
 
