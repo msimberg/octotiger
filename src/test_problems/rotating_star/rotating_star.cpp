@@ -129,8 +129,8 @@ std::vector<real> rotating_star(real x, real y, real z, real) {
 	static rotating_star_analytic rs;
 	const real fgamma = 5.0 / 3.0;
 	rs.state_at(u[rho_i], u[egas_i], u[sx_i], u[sy_i], x, y, z);
-	u[rho_i] = std::max(u[rho_i], 1.0e-10);
-	u[egas_i] = std::max(u[egas_i], 1.0e-10);
+	u[rho_i] = std::max(u[rho_i], 1.0e-20);
+	u[egas_i] = std::max(u[egas_i], 1.0e-20);
 	u[tau_i] = std::pow(u[egas_i], 1.0 / fgamma);
 	u[egas_i] += 0.5 * (std::pow(u[sx_i], 2) + std::pow(u[sy_i], 2)) / u[rho_i];
 	u[spc_i] = u[rho_i];
