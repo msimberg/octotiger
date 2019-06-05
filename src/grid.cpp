@@ -1780,7 +1780,7 @@ void grid::compute_primitive_slopes(real theta, const std::array<integer, NDIM> 
 			}
 		}
 	}
-	for (integer i = lb[XDIM]; i != ub[XDIM]; ++i) {
+/*	for (integer i = lb[XDIM]; i != ub[XDIM]; ++i) {
 		for (integer j = lb[YDIM]; j != ub[YDIM]; ++j) {
 #pragma GCC ivdep
 			for (integer k = lb[ZDIM]; k != ub[ZDIM]; ++k) {
@@ -1808,7 +1808,7 @@ void grid::compute_primitive_slopes(real theta, const std::array<integer, NDIM> 
 			}
 		}
 	}
-
+*/
 	PROF_END;
 }
 

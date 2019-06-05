@@ -125,8 +125,8 @@ int main(int argc, char* argv[]) {
 		int l_plane = -1;
 
 		for (int l = 0; l < mesh->dims[2] - 1; l++) {
-			if (zc[l] < ZERO && zc[l] + 0.5 * dx >= ZERO) {
-				l_plane = l;
+			if (zc[l] > -0.5*dx && zc[l] <= 0.5*dx) {
+				l_plane = 1;
 				break;
 			}
 		}
