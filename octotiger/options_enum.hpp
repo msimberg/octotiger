@@ -48,7 +48,7 @@
     {                                                                          \
         std::vector<std::string> strings;                                      \
         boost::split(strings, #__VA_ARGS__,                                    \
-            boost::is_any_of(" ,\t"));                                         \
+            boost::is_any_of(" ,\t"),boost::token_compress_on);                \
         static enum_name enums[] = {__VA_ARGS__};                              \
         static int sz1 =                                                       \
             std::vector<enum_name>(std::begin(enums), std::end(enums)).size(); \
