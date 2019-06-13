@@ -2327,6 +2327,23 @@ void grid::reconstruct() {
 // 			slpz[field][iii] = minmod_theta(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ], 2.0);
 // 		}
 	}
+    // loop 8 TODO not AVX512 compatible
+	for (integer iii = 0; iii != H_N3; iii += m2m_vector::size()) {
+        const m2m_vector  slpxy = m2m_vector(Uf[FXP][sy_i].data() + iii) - m2m_vector(Uf[FXM][sy_i].data() + iii);
+        const m2m_vector  slpxz = m2m_vector(Uf[FXP][sz_i].data() + iii) - m2m_vector(Uf[FXM][sz_i].data() + iii);
+        slpxy.store(slpx[sy_i].data() + iii);
+        slpxz.store(slpx[sz_i].data() + iii);
+
+        const m2m_vector  slpyx = m2m_vector(Uf[FYP][sx_i].data() + iii) - m2m_vector(Uf[FYM][sx_i].data() + iii);
+        const m2m_vector  slpyz = m2m_vector(Uf[FYP][sz_i].data() + iii) - m2m_vector(Uf[FYM][sz_i].data() + iii);
+        slpyx.store(slpy[sx_i].data() + iii);
+        slpyz.store(slpy[sz_i].data() + iii);
+
+        const m2m_vector  slpzx = m2m_vector(Uf[FZP][sx_i].data() + iii) - m2m_vector(Uf[FZM][sx_i].data() + iii);
+        const m2m_vector  slpzy = m2m_vector(Uf[FZP][sy_i].data() + iii) - m2m_vector(Uf[FZM][sy_i].data() + iii);
+        slpzx.store(slpz[sx_i].data() + iii);
+        slpzy.store(slpz[sy_i].data() + iii);
+	}
 
 //#pragma GCC ivdep
 	auto step1 = [&](real& lhs, real const& rhs) {lhs += 6.0 * rhs / dx;};
@@ -2403,18 +2420,20 @@ void grid::reconstruct() {
 // 			limit_slope(UfFZMfield[iii], Vfield[iii], UfFZPfield[iii]);
 // 		}
 	}
-	for (integer iii = 0; iii != H_N3; ++iii) {
+    // loop 8
+	// for (integer iii = 0; iii != H_N3; ++iii) {
 
-		slpx[sy_i][iii] = Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii];
-		slpx[sz_i][iii] = Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii];
+	// 	slpx[sy_i][iii] = Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii];
+	// 	slpx[sz_i][iii] = Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii];
 
-		slpy[sx_i][iii] = Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii];
-		slpy[sz_i][iii] = Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii];
+	// 	slpy[sx_i][iii] = Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii];
+	// 	slpy[sz_i][iii] = Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii];
 
-		slpz[sx_i][iii] = Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii];
-		slpz[sy_i][iii] = Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii];
-	}
+	// 	slpz[sx_i][iii] = Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii];
+	// 	slpz[sy_i][iii] = Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii];
+	// }
 
+    // loop 9
 	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
       // std::cerr << iii << std::endl;
 		inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
