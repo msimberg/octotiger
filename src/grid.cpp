@@ -921,6 +921,15 @@ void grid::velocity_inc(const space_vector& dv) {
 
 }
 
+m2m_vector minmod_vc(m2m_vector a, m2m_vector b) {
+	const m2m_vector::mask_type a_is_neg = a < 0;
+	const m2m_vector::mask_type b_is_neg = b < 0;
+	const m2m_vector::mask_type not_same = a_is_neg ^ b_is_neg;
+	m2m_vector val = Vc::min(Vc::abs(a), Vc::abs(b));
+    Vc::where(a_is_neg, val) += -2.0 * val;
+    Vc::where(not_same, val) = 0.0;
+	return val;
+}
 real minmod(real a, real b) {
 	const real a_is_neg = a < 0;
 	const real the_same = (a < 0) == (b < 0);
@@ -2357,17 +2366,114 @@ void grid::reconstruct() {
 			return 0.;
 		}
 	};
+	auto step1_vc = [&](m2m_vector& lhs, m2m_vector const& rhs) {lhs += 6.0 * rhs / dx;};
+	auto step2_vc = [&](m2m_vector& lhs, m2m_vector const& rhs) {lhs -= 6.0 * rhs / dx;};
+	auto minmod_step_vc = [](m2m_vector& lhs_arg, m2m_vector r1)
+	{
+		lhs_arg = minmod_vc(lhs_arg, r1 );
+        const m2m_vector::mask_type is_not_zero = r1 != 0;
+        const m2m_vector::mask_type is_zero = !is_not_zero;
+        Vc::where(is_zero, r1) = 1.0;
+        m2m_vector ret = 0.0;
+        Vc::where(is_not_zero, ret) = lhs_arg / r1;
+        return ret;
+	};
 
-	for (integer field = 0; field != opts().n_fields; ++field) {
-		std::vector<real>& Vfield = V[field];
+    // loop 9
+	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size()) {
+      m2m_vector slpxy(slpx[sy_i].data() + iii); 
+        m2m_vector slpxz(slpx[sz_i].data() + iii);
+        m2m_vector slpyz(slpy[sz_i].data() + iii);
+        m2m_vector slpzx(slpz[sx_i].data() + iii);
+        m2m_vector slpyx(slpy[sx_i].data() + iii);
+        m2m_vector slpzy(slpz[sy_i].data() + iii);
 
-		std::vector<real>& UfFXPfield = Uf[FXP][field];
-		std::vector<real>& UfFXMfield = Uf[FXM][field];
-		std::vector<real> const& slpxfield = slpx[field];
+		inplace_average(slpxy, slpyx);
+		inplace_average(slpxz, slpzx);
+		inplace_average(slpyz, slpzy);
 
-		if (field >= zx_i && field <= zz_i) {
-			continue;
+
+		step1_vc(slpxy, m2m_vector(V[zz_i].data() + iii));
+		step1_vc(slpyz, m2m_vector(V[zx_i].data() + iii));
+		step1_vc(slpzx, m2m_vector(V[zy_i].data() + iii));
+
+
+		step2_vc(slpyx, m2m_vector(V[zz_i].data() + iii));
+		step2_vc(slpzy, m2m_vector(V[zx_i].data() + iii));
+		step2_vc(slpxz, m2m_vector(V[zy_i].data() + iii));
+
+		auto wxy = minmod_step_vc(slpxy, m2m_vector(Uf[FXP][sy_i].data() + iii) - m2m_vector(Uf[FXM][sy_i].data() + iii) );
+		auto wxz = minmod_step_vc(slpxz, m2m_vector(Uf[FXP][sz_i].data() + iii) - m2m_vector(Uf[FXM][sz_i].data() + iii) );
+
+		auto wyx = minmod_step_vc(slpyx, m2m_vector(Uf[FYP][sx_i].data() + iii) - m2m_vector(Uf[FYM][sx_i].data() + iii) );
+		auto wyz = minmod_step_vc(slpyz, m2m_vector(Uf[FYP][sz_i].data() + iii) - m2m_vector(Uf[FYM][sz_i].data() + iii) );
+
+		auto wzx = minmod_step_vc(slpzx, m2m_vector(Uf[FZP][sx_i].data() + iii) - m2m_vector(Uf[FZM][sx_i].data() + iii) );
+		auto wzy = minmod_step_vc(slpzy, m2m_vector(Uf[FZP][sy_i].data() + iii) - m2m_vector(Uf[FZM][sy_i].data() + iii) );
+
+		auto FXPy = wxy * m2m_vector(Uf[FXP][sy_i].data() + iii)  + (m2m_vector(1.0)-wxy) * m2m_vector(V[sy_i].data() + iii);
+		auto FXMy = wxy * m2m_vector(Uf[FXM][sy_i].data() + iii)  + (m2m_vector(1.0)-wxy) * m2m_vector(V[sy_i].data() + iii);
+        FXPy.store(Uf[FXP][sy_i].data() + iii); 
+        FXMy.store(Uf[FXM][sy_i].data() + iii);
+
+		auto FXPz = wxz * m2m_vector(Uf[FXP][sz_i].data() + iii)  + (m2m_vector(1.0)-wxz) * m2m_vector(V[sz_i].data() + iii);
+		auto FXMz = wxz * m2m_vector(Uf[FXM][sz_i].data() + iii)  + (m2m_vector(1.0)-wxz) * m2m_vector(V[sz_i].data() + iii);
+        FXPz.store(Uf[FXP][sz_i].data() + iii);
+        FXMz.store(Uf[FXM][sz_i].data() + iii);
+
+		auto FYPx = wyx * m2m_vector(Uf[FYP][sx_i].data() + iii)  + (m2m_vector(1.0)-wyx) * m2m_vector(V[sx_i].data() + iii);
+		auto FYMx = wyx * m2m_vector(Uf[FYM][sx_i].data() + iii)  + (m2m_vector(1.0)-wyx) * m2m_vector(V[sx_i].data() + iii);
+        FYPx.store(Uf[FYP][sx_i].data() + iii);
+        FYMx.store(Uf[FYM][sx_i].data() + iii);
+
+		auto FYPz = wyz * m2m_vector(Uf[FYP][sz_i].data() + iii)  + (m2m_vector(1.0)-wyz) * m2m_vector(V[sz_i].data() + iii);
+		auto FYMz = wyz * m2m_vector(Uf[FYM][sz_i].data() + iii)  + (m2m_vector(1.0)-wyz) * m2m_vector(V[sz_i].data() + iii);
+        FYPz.store(Uf[FYP][sz_i].data() + iii);
+        FYMz.store(Uf[FYM][sz_i].data() + iii);
+
+		auto FZPx = wzx * m2m_vector(Uf[FZP][sx_i].data() + iii)  + (m2m_vector(1.0)-wzx) * m2m_vector(V[sx_i].data() + iii);
+		auto FZMx = wzx * m2m_vector(Uf[FZM][sx_i].data() + iii)  + (m2m_vector(1.0)-wzx) * m2m_vector(V[sx_i].data() + iii);
+        FZPx.store(Uf[FZP][sx_i].data() + iii);
+        FZMx.store(Uf[FZM][sx_i].data() + iii);
+
+		auto FZPy = wzy * m2m_vector(Uf[FZP][sy_i].data() + iii)  + (m2m_vector(1.0)-wzy) * m2m_vector(V[sy_i].data() + iii);
+		auto FZMy = wzy * m2m_vector(Uf[FZM][sy_i].data() + iii)  + (m2m_vector(1.0)-wzy) * m2m_vector(V[sy_i].data() + iii);
+        FZPy.store(Uf[FZP][sy_i].data() + iii);
+        FZMy.store(Uf[FZM][sy_i].data() + iii);
+
+        slpxy.store(slpx[sy_i].data() + iii);
+        slpxz.store(slpx[sz_i].data() + iii);
+        slpyz.store(slpy[sz_i].data() + iii);
+        slpzx.store(slpz[sx_i].data() + iii);
+        slpyx.store(slpy[sx_i].data() + iii);
+        slpzy.store(slpz[sy_i].data() + iii);
+
+		const m2m_vector zx_lim = +(slpyz - slpzy) / 12.0;
+		const m2m_vector zy_lim = -(slpxz - slpzx) / 12.0;
+		const m2m_vector zz_lim = +(slpxy - slpyx) / 12.0;
+
+		const m2m_vector Vzxi = m2m_vector(V[zx_i].data() + iii) - zx_lim * dx;
+		const m2m_vector Vzyi = m2m_vector(V[zy_i].data() + iii) - zy_lim * dx;
+		const m2m_vector Vzzi = m2m_vector(V[zz_i].data() + iii) - zz_lim * dx;
+
+		for (int face = 0; face != NFACE; ++face) {
+            Vzxi.store(Uf[face][zx_i].data() + iii);
+            Vzyi.store(Uf[face][zy_i].data() + iii);
+            Vzzi.store(Uf[face][zz_i].data() + iii);
 		}
+
+	}
+
+	// for (integer field = 0; field != opts().n_fields; ++field) {
+	// 	std::vector<real>& Vfield = V[field];
+
+	// 	std::vector<real>& UfFXPfield = Uf[FXP][field];
+	// 	std::vector<real>& UfFXMfield = Uf[FXM][field];
+	// 	std::vector<real> const& slpxfield = slpx[field];
+
+	// 	if (field >= zx_i && field <= zz_i) {
+	// 		continue;
+	// 	}
         // loop 2
 // #pragma GCC ivdep
 // 		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
@@ -2383,9 +2489,9 @@ void grid::reconstruct() {
 // 			limit_slope(UfFXMfield[iii], Vfield[iii], UfFXPfield[iii]);
 // 		}
 
-		std::vector<real>& UfFYPfield = Uf[FYP][field];
-		std::vector<real>& UfFYMfield = Uf[FYM][field];
-		std::vector<real> const& slpyfield = slpy[field];
+		// std::vector<real>& UfFYPfield = Uf[FYP][field];
+		// std::vector<real>& UfFYMfield = Uf[FYM][field];
+		// std::vector<real> const& slpyfield = slpy[field];
 
         // loop 4
 // #pragma GCC ivdep
@@ -2401,9 +2507,9 @@ void grid::reconstruct() {
 // 			UfFYMfield[iii] += ((slpyfield[iii - H_DNY] - sy) / 3.0) * HALF;
 // 			limit_slope(UfFYMfield[iii], Vfield[iii], UfFYPfield[iii]);
 // 		}
-		std::vector<real>& UfFZPfield = Uf[FZP][field];
-		std::vector<real>& UfFZMfield = Uf[FZM][field];
-		std::vector<real> const& slpzfield = slpz[field];
+		// std::vector<real>& UfFZPfield = Uf[FZP][field];
+		// std::vector<real>& UfFZMfield = Uf[FZM][field];
+		// std::vector<real> const& slpzfield = slpz[field];
 
         // loop 6
 // #pragma GCC ivdep
@@ -2419,7 +2525,7 @@ void grid::reconstruct() {
 // 			UfFZMfield[iii] += ((slpzfield[iii - H_DNZ] - sz) / 3.0) * HALF;
 // 			limit_slope(UfFZMfield[iii], Vfield[iii], UfFZPfield[iii]);
 // 		}
-	}
+	// }
     // loop 8
 	// for (integer iii = 0; iii != H_N3; ++iii) {
 
@@ -2434,64 +2540,64 @@ void grid::reconstruct() {
 	// }
 
     // loop 9
-	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-      // std::cerr << iii << std::endl;
-		inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
-		inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
-		inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
+	// for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+    //   // std::cerr << iii << std::endl;
+	// 	inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
+	// 	inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
+	// 	inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
 
-		step1(slpx[sy_i][iii], V[zz_i][iii]);
-		step1(slpy[sz_i][iii], V[zx_i][iii]);
-		step1(slpz[sx_i][iii], V[zy_i][iii]);
+	// 	step1(slpx[sy_i][iii], V[zz_i][iii]);
+	// 	step1(slpy[sz_i][iii], V[zx_i][iii]);
+	// 	step1(slpz[sx_i][iii], V[zy_i][iii]);
 
-		step2(slpy[sx_i][iii], V[zz_i][iii]);
-		step2(slpz[sy_i][iii], V[zx_i][iii]);
-		step2(slpx[sz_i][iii], V[zy_i][iii]);
+	// 	step2(slpy[sx_i][iii], V[zz_i][iii]);
+	// 	step2(slpz[sy_i][iii], V[zx_i][iii]);
+	// 	step2(slpx[sz_i][iii], V[zy_i][iii]);
 
-		auto wxy = minmod_step(slpx[sy_i][iii], Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii] );
-		auto wxz = minmod_step(slpx[sz_i][iii], Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii] );
+	// 	auto wxy = minmod_step(slpx[sy_i][iii], Uf[FXP][sy_i][iii] - Uf[FXM][sy_i][iii] );
+	// 	auto wxz = minmod_step(slpx[sz_i][iii], Uf[FXP][sz_i][iii] - Uf[FXM][sz_i][iii] );
 
-		auto wyx = minmod_step(slpy[sx_i][iii], Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii] );
-		auto wyz = minmod_step(slpy[sz_i][iii], Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii] );
+	// 	auto wyx = minmod_step(slpy[sx_i][iii], Uf[FYP][sx_i][iii] - Uf[FYM][sx_i][iii] );
+	// 	auto wyz = minmod_step(slpy[sz_i][iii], Uf[FYP][sz_i][iii] - Uf[FYM][sz_i][iii] );
 
-		auto wzx = minmod_step(slpz[sx_i][iii], Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii] );
-		auto wzy = minmod_step(slpz[sy_i][iii], Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii] );
+	// 	auto wzx = minmod_step(slpz[sx_i][iii], Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii] );
+	// 	auto wzy = minmod_step(slpz[sy_i][iii], Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii] );
 
-		// printf( "%e %e %e %e %e %e\n", wxy, wxz, wyx, wyz, wzx, wzy );
+	// 	// printf( "%e %e %e %e %e %e\n", wxy, wxz, wyx, wyz, wzx, wzy );
 
 
-		Uf[FXP][sy_i][iii] = wxy * Uf[FXP][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
-		Uf[FXM][sy_i][iii] = wxy * Uf[FXM][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
+	// 	Uf[FXP][sy_i][iii] = wxy * Uf[FXP][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
+	// 	Uf[FXM][sy_i][iii] = wxy * Uf[FXM][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
 
-		Uf[FXP][sz_i][iii] = wxz * Uf[FXP][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
-		Uf[FXM][sz_i][iii] = wxz * Uf[FXM][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
+	// 	Uf[FXP][sz_i][iii] = wxz * Uf[FXP][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
+	// 	Uf[FXM][sz_i][iii] = wxz * Uf[FXM][sz_i][iii]  + (1-wxz) * V[sz_i][iii];
 
-		Uf[FYP][sx_i][iii] = wyx * Uf[FYP][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
-		Uf[FYM][sx_i][iii] = wyx * Uf[FYM][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
+	// 	Uf[FYP][sx_i][iii] = wyx * Uf[FYP][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
+	// 	Uf[FYM][sx_i][iii] = wyx * Uf[FYM][sx_i][iii]  + (1-wyx) * V[sx_i][iii];
 
-		Uf[FYP][sz_i][iii] = wyz * Uf[FYP][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
-		Uf[FYM][sz_i][iii] = wyz * Uf[FYM][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
+	// 	Uf[FYP][sz_i][iii] = wyz * Uf[FYP][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
+	// 	Uf[FYM][sz_i][iii] = wyz * Uf[FYM][sz_i][iii]  + (1-wyz) * V[sz_i][iii];
 
-		Uf[FZP][sx_i][iii] = wzx * Uf[FZP][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
-		Uf[FZM][sx_i][iii] = wzx * Uf[FZM][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
+	// 	Uf[FZP][sx_i][iii] = wzx * Uf[FZP][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
+	// 	Uf[FZM][sx_i][iii] = wzx * Uf[FZM][sx_i][iii]  + (1-wzx) * V[sx_i][iii];
 
-		Uf[FZP][sy_i][iii] = wzy * Uf[FZP][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
-		Uf[FZM][sy_i][iii] = wzy * Uf[FZM][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
+	// 	Uf[FZP][sy_i][iii] = wzy * Uf[FZP][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
+	// 	Uf[FZM][sy_i][iii] = wzy * Uf[FZM][sy_i][iii]  + (1-wzy) * V[sy_i][iii];
 
-		const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
-		const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
-		const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
+	// 	const real zx_lim = +(slpy[sz_i][iii] - slpz[sy_i][iii]) / 12.0;
+	// 	const real zy_lim = -(slpx[sz_i][iii] - slpz[sx_i][iii]) / 12.0;
+	// 	const real zz_lim = +(slpx[sy_i][iii] - slpy[sx_i][iii]) / 12.0;
 
-		const real Vzxi = V[zx_i][iii] - zx_lim * dx;
-		const real Vzyi = V[zy_i][iii] - zy_lim * dx;
-		const real Vzzi = V[zz_i][iii] - zz_lim * dx;
+	// 	const real Vzxi = V[zx_i][iii] - zx_lim * dx;
+	// 	const real Vzyi = V[zy_i][iii] - zy_lim * dx;
+	// 	const real Vzzi = V[zz_i][iii] - zz_lim * dx;
 
-		for (int face = 0; face != NFACE; ++face) {
-			Uf[face][zx_i][iii] = Vzxi;
-			Uf[face][zy_i][iii] = Vzyi;
-			Uf[face][zz_i][iii] = Vzzi;
-		}
-	}
+	// 	for (int face = 0; face != NFACE; ++face) {
+	// 		Uf[face][zx_i][iii] = Vzxi;
+	// 		Uf[face][zy_i][iii] = Vzyi;
+	// 		Uf[face][zz_i][iii] = Vzzi;
+	// 	}
+	// }
 
 	for (integer iii = 0; iii != H_N3; ++iii) {
 #pragma GCC ivdep
