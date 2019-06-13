@@ -2285,16 +2285,23 @@ void grid::reconstruct() {
             tmp1.store(UfFXPfield.data() + iii);
             tmp2.store(UfFXMfield.data() + iii);
         }
-        // for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
-        //   // loop 4
-		// 	UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(
-		// 			Vfield[iii + H_DNY], Vfield[iii]);
-        //     // loop 5
-		// 	const real& sy = slpyfield[iii];
-		// 	UfFYPfield[iii] += (-(slpyfield[iii + H_DNY] - sy) / 3.0) * HALF;
-		// 	UfFYMfield[iii] += ((slpyfield[iii - H_DNY] - sy) / 3.0) * HALF;
-		// 	limit_slope(UfFYMfield[iii], Vfield[iii], UfFYPfield[iii]);
-        // }
+		std::vector<real>& UfFYPfield = Uf[FYP][field];
+		std::vector<real>& UfFYMfield = Uf[FYM][field];
+		std::vector<real> const& slpyfield = slpy[field];
+        for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
+          // loop 4
+			auto uf_avg = average(
+                m2m_vector(Vfield.data() + iii + H_DNY), m2m_vector(Vfield.data() + iii));
+            uf_avg.store(UfFYPfield.data() + iii);
+            uf_avg.store(UfFYMfield.data() + H_DNY + iii);
+            // loop 5
+            const m2m_vector sy(slpyfield.data() + iii);
+			auto tmp1 = m2m_vector(UfFYPfield.data() + iii) + (-(m2m_vector(slpyfield.data() + iii + H_DNY) - sy) / 3.0) * HALF;
+			auto tmp2 = m2m_vector(UfFYMfield.data() + iii) + ((m2m_vector(slpyfield.data() + iii - H_DNY) - sy) / 3.0) * HALF;
+			limit_slope_vc(tmp2, m2m_vector(Vfield.data() + iii), tmp1);
+            tmp1.store(UfFYPfield.data() + iii);
+            tmp2.store(UfFYMfield.data() + iii);
+        }
 
         // scalar loop 1
 // #pragma GCC ivdep
@@ -2348,24 +2355,24 @@ void grid::reconstruct() {
 		std::vector<real> const& slpyfield = slpy[field];
 
         // loop 4
-#pragma GCC ivdep
-		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-			UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(
-					Vfield[iii + H_DNY], Vfield[iii]);
-		}
+// #pragma GCC ivdep
+// 		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(
+// 					Vfield[iii + H_DNY], Vfield[iii]);
+// 		}
         // loop 5
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sy = slpyfield[iii];
-			UfFYPfield[iii] += (-(slpyfield[iii + H_DNY] - sy) / 3.0) * HALF;
-			UfFYMfield[iii] += ((slpyfield[iii - H_DNY] - sy) / 3.0) * HALF;
-			limit_slope(UfFYMfield[iii], Vfield[iii], UfFYPfield[iii]);
-		}
+// #pragma GCC ivdep
+// 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			const real& sy = slpyfield[iii];
+// 			UfFYPfield[iii] += (-(slpyfield[iii + H_DNY] - sy) / 3.0) * HALF;
+// 			UfFYMfield[iii] += ((slpyfield[iii - H_DNY] - sy) / 3.0) * HALF;
+// 			limit_slope(UfFYMfield[iii], Vfield[iii], UfFYPfield[iii]);
+// 		}
 		std::vector<real>& UfFZPfield = Uf[FZP][field];
 		std::vector<real>& UfFZMfield = Uf[FZM][field];
 		std::vector<real> const& slpzfield = slpz[field];
 
-        // loop 5
+        // loop 6
 #pragma GCC ivdep
 		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
 			UfFZPfield[iii] = UfFZMfield[iii + H_DNZ] = average(
