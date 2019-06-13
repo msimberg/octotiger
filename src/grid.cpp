@@ -2302,7 +2302,23 @@ void grid::reconstruct() {
             tmp1.store(UfFYPfield.data() + iii);
             tmp2.store(UfFYMfield.data() + iii);
         }
-
+		std::vector<real>& UfFZPfield = Uf[FZP][field];
+		std::vector<real>& UfFZMfield = Uf[FZM][field];
+		std::vector<real> const& slpzfield = slpz[field];
+        for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
+          // loop 6
+			auto uf_avg = average(
+                m2m_vector(Vfield.data() + iii + H_DNZ), m2m_vector(Vfield.data() + iii));
+            uf_avg.store(UfFZPfield.data() + iii);
+            uf_avg.store(UfFZMfield.data() + H_DNZ + iii);
+            // loop 7
+            const m2m_vector sz(slpzfield.data() + iii);
+			auto tmp1 = m2m_vector(UfFZPfield.data() + iii) + (-(m2m_vector(slpzfield.data() + iii + H_DNZ) - sz) / 3.0) * HALF;
+			auto tmp2 = m2m_vector(UfFZMfield.data() + iii) + ((m2m_vector(slpzfield.data() + iii - H_DNZ) - sz) / 3.0) * HALF;
+			limit_slope_vc(tmp2, m2m_vector(Vfield.data() + iii), tmp1);
+            tmp1.store(UfFZPfield.data() + iii);
+            tmp2.store(UfFZMfield.data() + iii);
+        }
         // scalar loop 1
 // #pragma GCC ivdep
 // 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
@@ -2373,18 +2389,19 @@ void grid::reconstruct() {
 		std::vector<real> const& slpzfield = slpz[field];
 
         // loop 6
-#pragma GCC ivdep
-		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
-			UfFZPfield[iii] = UfFZMfield[iii + H_DNZ] = average(
-					Vfield[iii + H_DNZ], Vfield[iii]);
-		}
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sz = slpzfield[iii];
-			UfFZPfield[iii] += (-(slpzfield[iii + H_DNZ] - sz) / 3.0) * HALF;
-			UfFZMfield[iii] += ((slpzfield[iii - H_DNZ] - sz) / 3.0) * HALF;
-			limit_slope(UfFZMfield[iii], Vfield[iii], UfFZPfield[iii]);
-		}
+// #pragma GCC ivdep
+// 		for (integer iii = 0; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			UfFZPfield[iii] = UfFZMfield[iii + H_DNZ] = average(
+// 					Vfield[iii + H_DNZ], Vfield[iii]);
+// 		}
+//         // loop 7
+// #pragma GCC ivdep
+// 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			const real& sz = slpzfield[iii];
+// 			UfFZPfield[iii] += (-(slpzfield[iii + H_DNZ] - sz) / 3.0) * HALF;
+// 			UfFZMfield[iii] += ((slpzfield[iii - H_DNZ] - sz) / 3.0) * HALF;
+// 			limit_slope(UfFZMfield[iii], Vfield[iii], UfFZPfield[iii]);
+// 		}
 	}
 	for (integer iii = 0; iii != H_N3; ++iii) {
 
