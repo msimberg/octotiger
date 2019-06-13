@@ -2177,6 +2177,20 @@ inline void limit_slope(real& ql, real q0, real& qr) {
     qr -= qr * skip;
     qr += q0 * skip;
 }
+inline void limit_slope_vc(m2m_vector& ql, m2m_vector q0, m2m_vector& qr) {
+    const m2m_vector::mask_type skip = m2m_vector::mask_type(qr < q0) ^ m2m_vector::mask_type(q0 < ql);
+	const m2m_vector tmp1 = qr - ql;
+	const m2m_vector tmp2 = qr + ql;
+	const m2m_vector tmp3 = sqr(tmp1) * SIXTH;
+	const m2m_vector tmp4 = tmp1 * (q0 - 0.5 * tmp2);
+    const m2m_vector::mask_type mask1 = (tmp4 > tmp3);
+    m2m_vector::mask_type mask2 = (-tmp3 > tmp4);
+    mask2 &= !mask1;
+    Vc::where(mask1, ql) = (3.0 * q0 - 2.0 * qr);
+	Vc::where(mask2, qr) = (3.0 * q0 - 2.0 * ql);
+    Vc::where(skip, ql) = q0;
+    Vc::where(skip, qr) = q0;
+}
 
 // inline void limit_slope(real& ql, real q0, real& qr) {
 //     const bool skip = (qr < q0) != (q0 < ql);
@@ -2261,14 +2275,16 @@ void grid::reconstruct() {
             uf_avg.store(UfFXPfield.data() + iii);
             uf_avg.store(UfFXMfield.data() + H_DNX + iii);
 		}
-        // TODO
-        // for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
-        //     // loop 3
-		// 	const real& sx = slpxfield[iii];
-		// 	UfFXPfield[iii] += (-(slpxfield[iii + H_DNX] - sx) / 3.0) * HALF;
-		// 	UfFXMfield[iii] += ((slpxfield[iii - H_DNX] - sx) / 3.0) * HALF;
-		// 	limit_slope(UfFXMfield[iii], Vfield[iii], UfFXPfield[iii]);
-        // }
+		std::vector<real> const& slpxfield = slpx[field];
+        for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
+            // loop 3
+            const m2m_vector sx(slpxfield.data() + iii);
+			auto tmp1 = m2m_vector(UfFXPfield.data() + iii) + (-(m2m_vector(slpxfield.data() + iii + H_DNX) - sx) / 3.0) * HALF;
+			auto tmp2 = m2m_vector(UfFXMfield.data() + iii) + ((m2m_vector(slpxfield.data() + iii - H_DNX) - sx) / 3.0) * HALF;
+			limit_slope_vc(tmp2, m2m_vector(Vfield.data() + iii), tmp1);
+            tmp1.store(UfFXPfield.data() + iii);
+            tmp2.store(UfFXMfield.data() + iii);
+        }
         // for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
         //   // loop 4
 		// 	UfFYPfield[iii] = UfFYMfield[iii + H_DNY] = average(
@@ -2319,13 +2335,13 @@ void grid::reconstruct() {
 // 					Vfield[iii + H_DNX], Vfield[iii]);
 // 		}
         // loop 3
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real& sx = slpxfield[iii];
-			UfFXPfield[iii] += (-(slpxfield[iii + H_DNX] - sx) / 3.0) * HALF;
-			UfFXMfield[iii] += ((slpxfield[iii - H_DNX] - sx) / 3.0) * HALF;
-			limit_slope(UfFXMfield[iii], Vfield[iii], UfFXPfield[iii]);
-		}
+// #pragma GCC ivdep
+// 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			const real& sx = slpxfield[iii];
+// 			UfFXPfield[iii] += (-(slpxfield[iii + H_DNX] - sx) / 3.0) * HALF;
+// 			UfFXMfield[iii] += ((slpxfield[iii - H_DNX] - sx) / 3.0) * HALF;
+// 			limit_slope(UfFXMfield[iii], Vfield[iii], UfFXPfield[iii]);
+// 		}
 
 		std::vector<real>& UfFYPfield = Uf[FYP][field];
 		std::vector<real>& UfFYMfield = Uf[FYM][field];
