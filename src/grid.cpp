@@ -921,7 +921,70 @@ void grid::velocity_inc(const space_vector& dv) {
 
 }
 
-OCTOTIGER_FORCEINLINE real minmod(real a, real b) {
+real minmod(real a, real b) {
+	const real a_is_neg = a < 0;
+	const real the_same = (a < 0) == (b < 0);
+	real val = std::min(std::abs(a), std::abs(b));
+    val += -2.0 * val * a_is_neg;
+    val *= the_same;
+	return val;
+}
+OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real theta = 1.0) {
+	const real a_is_neg = a < 0;
+	const real the_same = (a < 0) == (b < 0);
+	real val = std::min(std::abs(a), std::abs(b));
+    val += -2.0 * val * a_is_neg;
+    val *= the_same;
+    val *= theta;
+    const real val2 = HALF * (a + b);
+	const real vals_same = (val < 0) == (val2 < 0);
+	real erg = std::min(std::abs(val), std::abs(val2));
+    erg += -2.0 * erg * a_is_neg;
+    erg *= vals_same;
+
+	return erg;
+}
+OCTOTIGER_FORCEINLINE m2m_vector minmod_theta_vc(m2m_vector a, m2m_vector b, m2m_vector theta = 1.0) {
+	const m2m_vector::mask_type a_is_neg = a < 0;
+	const m2m_vector::mask_type b_is_neg = b < 0;
+	const m2m_vector::mask_type not_same = a_is_neg ^ b_is_neg;
+	m2m_vector val = Vc::min(Vc::abs(a), Vc::abs(b));
+    Vc::where(a_is_neg, val) += -2.0 * val;
+    Vc::where(not_same, val) = 0.0;
+    val *= theta;
+    const m2m_vector val2 = HALF * (a + b);
+	const m2m_vector::mask_type val_is_neg = val < 0;
+	const m2m_vector::mask_type val2_is_neg = val2 < 0;
+	const m2m_vector::mask_type vals_not_same = val_is_neg ^ val2_is_neg;
+	m2m_vector erg = Vc::min(Vc::abs(val), Vc::abs(val2));
+    Vc::where(a_is_neg, erg) += -2.0 * erg;
+    Vc::where(vals_not_same, erg) = 0.0;
+	return erg;
+}
+
+// template<typename operand, typename mask>
+// operand minmod_theta_binary(operand a, operand b, operand theta = 1.0) {
+// 	const mask a_is_neg = a < 0;
+// 	const mask the_same = (a < 0) == (b < 0);
+// 	operand val = std::min(std::abs(a), std::abs(b));
+
+//     //wrapper for Vc where, or a simple multiplication?
+//     apply_mask(val, -2.0 * val * theta, a_is_neg)
+
+//                 Vc::where(mask, m_partner[0]) =
+//                     m_partner[0] + local_expansions_SoA.value<0>(interaction_partner_flat_index);
+//     val += -2.0 * val * theta * a_is_neg;
+//     val *= the_same;
+//     const operand val2 = HALF * (a + b);
+// 	const mask vals_same = (val < 0) == (val2 < 0);
+// 	operand erg = std::min(std::abs(val), std::abs(val2));
+//     erg += -2.0 * erg * a_is_neg;
+//     erg *= vals_same;
+
+// 	return erg;
+// }
+
+inline real minmod_old(real a, real b) {
 //	return (std::copysign(HALF, a) + std::copysign(HALF, b)) * std::min(std::abs(a), std::abs(b));
 	bool a_is_neg = a < 0;
 	bool b_is_neg = b < 0;
@@ -936,7 +999,7 @@ OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real c, real theta) {
 	return minmod(theta * minmod(a, b), c);
 }
 
-OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real theta = 1.0) {
+OCTOTIGER_FORCEINLINE real minmod_theta2(real a, real b, real theta = 1.0) {
 	return minmod(theta * minmod(a, b), HALF * (a + b));
 }
 
@@ -2097,8 +2160,39 @@ void grid::rad_init() {
 	rad_grid_ptr->compute_mmw(U);
 	rad_grid_ptr->initialize_erad(U[rho_i], U[tau_i]);
 }
-
 inline void limit_slope(real& ql, real q0, real& qr) {
+    const real skip = (qr < q0) != (q0 < ql);
+	const real tmp1 = qr - ql;
+	const real tmp2 = qr + ql;
+	const real tmp3 = sqr(tmp1) * SIXTH;
+	const real tmp4 = tmp1 * (q0 - 0.5 * tmp2);
+    const real mask1 = (tmp4 > tmp3) ? 1.0 : 0.0;
+    const real mask2 = (-tmp3 > tmp4) ? (1.0 - mask1) : 0.0;
+    ql -= (ql * mask1);
+    ql += (3.0 * q0 - 2.0 * qr) * mask1;
+	qr -= (qr * mask2);
+	qr += (3.0 * q0 - 2.0 * ql) * mask2;
+    ql -= ql * skip;
+    ql += q0 * skip;
+    qr -= qr * skip;
+    qr += q0 * skip;
+}
+
+// inline void limit_slope(real& ql, real q0, real& qr) {
+//     const bool skip = (qr < q0) != (q0 < ql);
+// 	const real tmp1 = qr - ql;
+// 	const real tmp2 = qr + ql;
+// 	const real tmp3 = sqr(tmp1) * SIXTH;
+// 	const real tmp4 = tmp1 * (q0 - 0.5 * tmp2);
+//     const real operand = (tmp4 > tmp3) ? qr : ql;
+//     const real update = (3.0 * q0 - 2.0 * operand);
+//     ql = (tmp4 > tmp3) ? update : ql; 
+//     qr = (-tmp3 > tmp4) ? update : qr; 
+//     ql = skip ? q0 : ql;
+//     qr = skip ? q0 : qr;
+// }
+
+inline void limit_slope_old(real& ql, real q0, real& qr) {
 	const real tmp1 = qr - ql;
 	const real tmp2 = qr + ql;
 
@@ -2140,6 +2234,7 @@ void grid::reconstruct() {
 
 	compute_primitives();
 
+    // 15 Fields
 	for (integer field = 0; field != opts().n_fields; ++field) {
 		if (field >= zx_i && field <= zz_i) {
 			continue;
@@ -2147,12 +2242,51 @@ void grid::reconstruct() {
 		// TODO: Remove these unused variables
 		//real theta_x, theta_y, theta_z;
 		std::vector<real> const& Vfield = V[field];
-#pragma GCC ivdep
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			slpx[field][iii] = minmod_theta(Vfield[iii + H_DNX] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNX], 2.0);
-			slpy[field][iii] = minmod_theta(Vfield[iii + H_DNY] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNY], 2.0);
-			slpz[field][iii] = minmod_theta(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ], 2.0);
+        // H_NX = 14; H_N3 = 2744
+        // m2m_vector Vfield_dnx(Vfield.data() + (H_NX * H_NX + H_DNX));
+        // std::cout << Vfield[H_NX * H_NX + H_DNX + 0] << " " << Vfield[H_NX * H_NX + H_DNX + 1] << " " << Vfield[H_NX * H_NX + H_DNX + 2] << std::endl;
+        // std::cout << Vfield_dnx[0] << " " << Vfield_dnx[1] << " " << Vfield_dnx[2] << std::endl;
+        // std::cin.get();
+        for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size())  {
+			auto slpx_vec = minmod_theta_vc(m2m_vector(Vfield.data() + iii + H_DNX) - m2m_vector(Vfield.data() + iii),
+                                            m2m_vector(Vfield.data() + iii) - m2m_vector(Vfield.data() + iii - H_DNX), 2.0);
+			auto slpy_vec = minmod_theta_vc(m2m_vector(Vfield.data() + iii + H_DNY) - m2m_vector(Vfield.data() + iii),
+                                            m2m_vector(Vfield.data() + iii) - m2m_vector(Vfield.data() + iii - H_DNY), 2.0);
+			auto slpz_vec = minmod_theta_vc(m2m_vector(Vfield.data() + iii + H_DNZ) - m2m_vector(Vfield.data() + iii),
+                                            m2m_vector(Vfield.data() + iii) - m2m_vector(Vfield.data() + iii - H_DNZ), 2.0);
+
+            slpx_vec.store(slpx[field].data() + iii);
+            slpy_vec.store(slpy[field].data() + iii); 
+            slpz_vec.store(slpz[field].data() + iii); 
+            // std::cout <<slpx[field][iii] << " " << slpy[field][iii] << " " << slpz[field][iii] << std::endl;
+            // auto slpx_old = slpx[field][iii];
+            // auto slpy_old = slpy[field][iii];
+            // auto slpz_old = slpz[field][iii];
+            // slpx[field][iii] = minmod_theta(Vfield[iii + H_DNX] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNX], 2.0);
+            // if (slpx_old != slpx[field][iii]) {
+            //   std::cout << iii << " x differs:" << slpx_old << " vs non-vec " << slpx[field][iii] << std::endl;
+            //   std::cin.get();
+            // }
+
+            // slpy[field][iii] = minmod_theta(Vfield[iii + H_DNY] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNY], 2.0);
+            // if (slpy_old != slpy[field][iii]) {
+            //   std::cout << iii << " y differs:" << slpy_old << " vs non-vec " << slpy[field][iii] << std::endl;
+            //   std::cin.get();
+            // }
+            // slpz[field][iii] = minmod_theta(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ], 2.0);
+            // if (slpz_old != slpz[field][iii]) {
+            //   std::cout << iii << " z differs:" << slpz_old << " vs non-vec " << slpz[field][iii] << std::endl;
+            //   std::cin.get();
+            // }
+            // std::cout <<slpx[field][iii] << " " << slpy[field][iii] << " " << slpz[field][iii] << std::endl;
+            // std::cin.get();
 		}
+// #pragma GCC ivdep
+// 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			slpx[field][iii] = minmod_theta(Vfield[iii + H_DNX] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNX], 2.0);
+// 			slpy[field][iii] = minmod_theta(Vfield[iii + H_DNY] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNY], 2.0);
+// 			slpz[field][iii] = minmod_theta(Vfield[iii + H_DNZ] - Vfield[iii], Vfield[iii] - Vfield[iii - H_DNZ], 2.0);
+// 		}
 	}
 
 //#pragma GCC ivdep
@@ -2238,6 +2372,7 @@ void grid::reconstruct() {
 	}
 
 	for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+      // std::cerr << iii << std::endl;
 		inplace_average(slpx[sy_i][iii], slpy[sx_i][iii]);
 		inplace_average(slpx[sz_i][iii], slpz[sx_i][iii]);
 		inplace_average(slpy[sz_i][iii], slpz[sy_i][iii]);
@@ -2259,7 +2394,7 @@ void grid::reconstruct() {
 		auto wzx = minmod_step(slpz[sx_i][iii], Uf[FZP][sx_i][iii] - Uf[FZM][sx_i][iii] );
 		auto wzy = minmod_step(slpz[sy_i][iii], Uf[FZP][sy_i][iii] - Uf[FZM][sy_i][iii] );
 
-		//printf( "%e %e %e %e %e %e\n", wxy, wxz, wyx, wyz, wzx, wzy );
+		// printf( "%e %e %e %e %e %e\n", wxy, wxz, wyx, wyz, wzx, wzy );
 
 
 		Uf[FXP][sy_i][iii] = wxy * Uf[FXP][sy_i][iii]  + (1-wxy) * V[sy_i][iii];
