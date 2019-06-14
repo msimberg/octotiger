@@ -2464,6 +2464,47 @@ void grid::reconstruct() {
 
 	}
 
+    // loop 10
+// 	for (integer iii = 0; iii != H_N3; ++iii) {
+// #pragma GCC ivdep
+// 		for (integer face = 0; face != NFACE; ++face) {
+// 			real w = 0.0;
+// 			std::vector<std::vector<real> >& Ufface = Uf[face];
+// 			for (integer si = 0; si != opts().n_species; ++si) {
+// 				w += Ufface[spc_i + si][iii];
+// 			}
+// 			if (w > ZERO) {
+// 				for (integer si = 0; si != opts().n_species; ++si) {
+// 					Ufface[spc_i + si][iii] /= w;
+// 				}
+// 			}
+// 		}
+// 	}
+
+    // loop 11
+	if (opts().gravity) {
+//#pragma GCC ivdep
+		std::vector<real>& UfFXMpot_i = Uf[FXM][pot_i];
+		std::vector<real>& UfFYMpot_i = Uf[FYM][pot_i];
+		std::vector<real>& UfFZMpot_i = Uf[FZM][pot_i];
+
+		std::vector<real>& UfFXPpot_i = Uf[FXP][pot_i];
+		std::vector<real>& UfFYPpot_i = Uf[FYP][pot_i];
+		std::vector<real>& UfFZPpot_i = Uf[FZP][pot_i];
+
+        for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; iii += m2m_vector::size()) {
+            const m2m_vector phi_x = HALF * (m2m_vector(UfFXMpot_i.data() + iii) + m2m_vector(UfFXPpot_i.data() + iii - H_DNX));
+			const m2m_vector phi_y = HALF * (m2m_vector(UfFYMpot_i.data() + iii) + m2m_vector(UfFYPpot_i.data() + iii - H_DNY));
+			const m2m_vector phi_z = HALF * (m2m_vector(UfFZMpot_i.data() + iii) + m2m_vector(UfFZPpot_i.data() + iii - H_DNZ));
+            phi_x.store(UfFXMpot_i.data() + iii);
+            phi_y.store(UfFYMpot_i.data() + iii);
+            phi_z.store(UfFZMpot_i.data() + iii);
+            phi_x.store(UfFXPpot_i.data() + iii - H_DNX);
+            phi_y.store(UfFYPpot_i.data() + iii - H_DNY);
+            phi_z.store(UfFZPpot_i.data() + iii - H_DNZ);
+		}
+    }
+
 	// for (integer field = 0; field != opts().n_fields; ++field) {
 	// 	std::vector<real>& Vfield = V[field];
 
@@ -2599,44 +2640,47 @@ void grid::reconstruct() {
 	// 	}
 	// }
 
-	for (integer iii = 0; iii != H_N3; ++iii) {
-#pragma GCC ivdep
-		for (integer face = 0; face != NFACE; ++face) {
-			real w = 0.0;
-			std::vector<std::vector<real> >& Ufface = Uf[face];
-			for (integer si = 0; si != opts().n_species; ++si) {
-				w += Ufface[spc_i + si][iii];
-			}
-			if (w > ZERO) {
-				for (integer si = 0; si != opts().n_species; ++si) {
-					Ufface[spc_i + si][iii] /= w;
-				}
-			}
-		}
-	}
+    // loop 10
+// 	for (integer iii = 0; iii != H_N3; ++iii) {
+// #pragma GCC ivdep
+// 		for (integer face = 0; face != NFACE; ++face) {
+// 			real w = 0.0;
+// 			std::vector<std::vector<real> >& Ufface = Uf[face];
+// 			for (integer si = 0; si != opts().n_species; ++si) {
+// 				w += Ufface[spc_i + si][iii];
+// 			}
+// 			if (w > ZERO) {
+// 				for (integer si = 0; si != opts().n_species; ++si) {
+// 					Ufface[spc_i + si][iii] /= w;
+// 				}
+// 			}
+// 		}
+// 	}
 
-	if (opts().gravity) {
-//#pragma GCC ivdep
-		std::vector<real>& UfFXMpot_i = Uf[FXM][pot_i];
-		std::vector<real>& UfFYMpot_i = Uf[FYM][pot_i];
-		std::vector<real>& UfFZMpot_i = Uf[FZM][pot_i];
+    // loop 11
+// 	if (opts().gravity) {
+// //#pragma GCC ivdep
+// 		std::vector<real>& UfFXMpot_i = Uf[FXM][pot_i];
+// 		std::vector<real>& UfFYMpot_i = Uf[FYM][pot_i];
+// 		std::vector<real>& UfFZMpot_i = Uf[FZM][pot_i];
 
-		std::vector<real>& UfFXPpot_i = Uf[FXP][pot_i];
-		std::vector<real>& UfFYPpot_i = Uf[FYP][pot_i];
-		std::vector<real>& UfFZPpot_i = Uf[FZP][pot_i];
+// 		std::vector<real>& UfFXPpot_i = Uf[FXP][pot_i];
+// 		std::vector<real>& UfFYPpot_i = Uf[FYP][pot_i];
+// 		std::vector<real>& UfFZPpot_i = Uf[FZP][pot_i];
 
-		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
-			const real phi_x = HALF * (UfFXMpot_i[iii] + UfFXPpot_i[iii - H_DNX]);
-			const real phi_y = HALF * (UfFYMpot_i[iii] + UfFYPpot_i[iii - H_DNY]);
-			const real phi_z = HALF * (UfFZMpot_i[iii] + UfFZPpot_i[iii - H_DNZ]);
-			UfFXMpot_i[iii] = phi_x;
-			UfFYMpot_i[iii] = phi_y;
-			UfFZMpot_i[iii] = phi_z;
-			UfFXPpot_i[iii - H_DNX] = phi_x;
-			UfFYPpot_i[iii - H_DNY] = phi_y;
-			UfFZPpot_i[iii - H_DNZ] = phi_z;
-		}
-	}
+// 		for (integer iii = H_NX * H_NX; iii != H_N3 - H_NX * H_NX; ++iii) {
+// 			const real phi_x = HALF * (UfFXMpot_i[iii] + UfFXPpot_i[iii - H_DNX]);
+// 			const real phi_y = HALF * (UfFYMpot_i[iii] + UfFYPpot_i[iii - H_DNY]);
+// 			const real phi_z = HALF * (UfFZMpot_i[iii] + UfFZPpot_i[iii - H_DNZ]);
+// 			UfFXMpot_i[iii] = phi_x;
+// 			UfFYMpot_i[iii] = phi_y;
+// 			UfFZMpot_i[iii] = phi_z;
+// 			UfFXPpot_i[iii - H_DNX] = phi_x;
+// 			UfFYPpot_i[iii - H_DNY] = phi_y;
+// 			UfFZPpot_i[iii - H_DNZ] = phi_z;
+// 		}
+// 	}
+    // loop 12
 	for (integer field = 0; field != opts().n_fields; ++field) {
 		if (field != rho_i && field != tau_i && field != egas_i) {
 #pragma GCC ivdep
@@ -2649,7 +2693,7 @@ void grid::reconstruct() {
 			}
 		}
 	}
-
+    // loop 13
 	for (integer i = H_BW - 1; i != H_NX - H_BW + 1; ++i) {
 		for (integer j = H_BW - 1; j != H_NX - H_BW + 1; ++j) {
 #pragma GCC ivdep
