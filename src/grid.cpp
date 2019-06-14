@@ -2483,7 +2483,6 @@ void grid::reconstruct() {
 
     // loop 11
 	if (opts().gravity) {
-//#pragma GCC ivdep
 		std::vector<real>& UfFXMpot_i = Uf[FXM][pot_i];
 		std::vector<real>& UfFYMpot_i = Uf[FYM][pot_i];
 		std::vector<real>& UfFZMpot_i = Uf[FZM][pot_i];
@@ -2504,6 +2503,79 @@ void grid::reconstruct() {
             phi_z.store(UfFZPpot_i.data() + iii - H_DNZ);
 		}
     }
+
+    // loop 12: Honestly, vectorization is not required here but for the sake of completeness
+	for (integer field = 0; field != opts().n_fields; ++field) {
+		if (field != rho_i && field != tau_i && field != egas_i) {
+			for (integer face = 0; face != NFACE; ++face) {
+				std::vector<real>& Uffacefield = Uf[face][field];
+				std::vector<real> const& Uffacerho_i = Uf[face][rho_i];
+                for (integer iii = 0; iii != H_N3; iii += m2m_vector::size()) {
+                  const m2m_vector facefield = m2m_vector(Uffacefield.data() + iii) * m2m_vector(Uffacerho_i.data() + iii);
+                  facefield.store(Uffacefield.data() + iii);
+				}
+			}
+		}
+	}
+
+    // loop 13 - goes from 422 to 2321. Every 10 iterations it skips 5 indices though
+    double index_array[m2m_vector::size()];
+    for (integer i = 0; i < m2m_vector::size(); i++)
+        index_array[i] = i;
+    const m2m_vector mask_helper(index_array);
+    for (integer face = 0; face != NFACE; ++face) {
+        std::vector<std::vector<real> >& Ufface = Uf[face];
+        m2m_vector x0 = ZERO;
+        m2m_vector y0 = ZERO;
+        if (face == FXP) {
+            x0 = +HALF * dx;
+        } else if (face == FXM) {
+            x0 = -HALF * dx;
+        } else if (face == FYP) {
+            y0 = +HALF * dx;
+        } else if (face == FYM) {
+            y0 = -HALF * dx;
+        }
+        for (integer i = H_BW - 1; i != H_NX - H_BW + 1; ++i) {
+            for (integer j = H_BW - 1; j != H_NX - H_BW + 1; ++j) {
+                for (integer k = H_BW - 1; k < H_NX - H_BW + 1; k += m2m_vector::size()) {
+                  const m2m_vector::mask_type mask = (mask_helper + k) < m2m_vector(H_NX - H_BW + 1);
+                    const integer iii = hindex(i, j, k);
+                    const m2m_vector Uffacerho_iii(Ufface[rho_i].data() + iii);
+
+                    m2m_vector ux = m2m_vector(Ufface[sx_i].data() + iii);
+                    Vc::where(mask, ux) = ux - omega * (m2m_vector(X[YDIM].data() + iii) + y0) * Uffacerho_iii;
+                    m2m_vector uy = m2m_vector(Ufface[sy_i].data() + iii);
+                    Vc::where(mask, uy) = uy + omega * (m2m_vector(X[XDIM].data() + iii) + x0) * Uffacerho_iii;
+                    m2m_vector uz = m2m_vector(Ufface[zz_i].data() + iii);
+                    Vc::where(mask, uz) = uz + sqr(dx) * omega * Uffacerho_iii / 6.0;
+
+                    m2m_vector ugas = m2m_vector(Ufface[egas_i].data() + iii);
+                    Vc::where(mask, ugas) = ugas + HALF * sqr(ux) / Uffacerho_iii;
+                    Vc::where(mask, ugas) = ugas + HALF * sqr(uy) / Uffacerho_iii;
+                    // TODO sz_i vs zz_i
+                    Vc::where(mask, ugas) = ugas + HALF * sqr(m2m_vector(Ufface[sz_i].data() + iii)) / Uffacerho_iii;
+                    ux.store(Ufface[sx_i].data() + iii);
+                    uy.store(Ufface[sy_i].data() + iii);
+                    uz.store(Ufface[zz_i].data() + iii);
+                    ugas.store(Ufface[egas_i].data() + iii);
+                }
+            }
+        }
+        // TODO ztwd not vectorized 
+        if (opts().eos == WD) {
+            for (integer i = H_BW - 1; i != H_NX - H_BW + 1; ++i) {
+                for (integer j = H_BW - 1; j != H_NX - H_BW + 1; ++j) {
+                    for (integer k = H_BW - 1; k != H_NX - H_BW + 1; ++k) {
+                        const integer iii = hindex(i, j, k);
+                        std::vector<std::vector<real> >& Ufface = Uf[face];
+                        const real Uffacerho_iii = Ufface[rho_i][iii];
+                        Ufface[egas_i][iii] += ztwd_energy(Uffacerho_iii);
+                    }
+                }
+            }
+        }
+	}
 
 	// for (integer field = 0; field != opts().n_fields; ++field) {
 	// 	std::vector<real>& Vfield = V[field];
@@ -2681,53 +2753,54 @@ void grid::reconstruct() {
 // 		}
 // 	}
     // loop 12
-	for (integer field = 0; field != opts().n_fields; ++field) {
-		if (field != rho_i && field != tau_i && field != egas_i) {
-#pragma GCC ivdep
-			for (integer face = 0; face != NFACE; ++face) {
-				std::vector<real>& Uffacefield = Uf[face][field];
-				std::vector<real> const& Uffacerho_i = Uf[face][rho_i];
-				for (integer iii = 0; iii != H_N3; ++iii) {
-					Uffacefield[iii] *= Uffacerho_i[iii];
-				}
-			}
-		}
-	}
-    // loop 13
-	for (integer i = H_BW - 1; i != H_NX - H_BW + 1; ++i) {
-		for (integer j = H_BW - 1; j != H_NX - H_BW + 1; ++j) {
-#pragma GCC ivdep
-			for (integer k = H_BW - 1; k != H_NX - H_BW + 1; ++k) {
-				const integer iii = hindex(i, j, k);
-				for (integer face = 0; face != NFACE; ++face) {
-					std::vector<std::vector<real> >& Ufface = Uf[face];
-					real const Uffacerho_iii = Ufface[rho_i][iii];
+// 	for (integer field = 0; field != opts().n_fields; ++field) {
+// 		if (field != rho_i && field != tau_i && field != egas_i) {
+// #pragma GCC ivdep
+// 			for (integer face = 0; face != NFACE; ++face) {
+// 				std::vector<real>& Uffacefield = Uf[face][field];
+// 				std::vector<real> const& Uffacerho_i = Uf[face][rho_i];
+// 				for (integer iii = 0; iii != H_N3; ++iii) {
+// 					Uffacefield[iii] *= Uffacerho_i[iii];
+// 				}
+// 			}
+// 		}
+// 	}
+    // loop 13 - goes from 422 to 2321. Every 10 iterations it skips 5 indices though
+// 	for (integer i = H_BW - 1; i != H_NX - H_BW + 1; ++i) {
+// 		for (integer j = H_BW - 1; j != H_NX - H_BW + 1; ++j) {
+// #pragma GCC ivdep
+// 			for (integer k = H_BW - 1; k != H_NX - H_BW + 1; ++k) {
+// 				const integer iii = hindex(i, j, k);
+// 				for (integer face = 0; face != NFACE; ++face) {
+// 					std::vector<std::vector<real> >& Ufface = Uf[face];
+// 					real const Uffacerho_iii = Ufface[rho_i][iii];
 
-					real x0 = ZERO;
-					real y0 = ZERO;
-					if (face == FXP) {
-						x0 = +HALF * dx;
-					} else if (face == FXM) {
-						x0 = -HALF * dx;
-					} else if (face == FYP) {
-						y0 = +HALF * dx;
-					} else if (face == FYM) {
-						y0 = -HALF * dx;
-					}
+// 					real x0 = ZERO;
+// 					real y0 = ZERO;
+// 					if (face == FXP) {
+// 						x0 = +HALF * dx;
+// 					} else if (face == FXM) {
+// 						x0 = -HALF * dx;
+// 					} else if (face == FYP) {
+// 						y0 = +HALF * dx;
+// 					} else if (face == FYM) {
+// 						y0 = -HALF * dx;
+// 					}
 
-					Ufface[sx_i][iii] -= omega * (X[YDIM][iii] + y0) * Uffacerho_iii;
-					Ufface[sy_i][iii] += omega * (X[XDIM][iii] + x0) * Uffacerho_iii;
-					Ufface[zz_i][iii] += sqr(dx) * omega * Uffacerho_iii / 6.0;
-					Ufface[egas_i][iii] += HALF * sqr(Ufface[sx_i][iii]) / Uffacerho_iii;
-					Ufface[egas_i][iii] += HALF * sqr(Ufface[sy_i][iii]) / Uffacerho_iii;
-					Ufface[egas_i][iii] += HALF * sqr(Ufface[sz_i][iii]) / Uffacerho_iii;
-					if (opts().eos == WD) {
-						Ufface[egas_i][iii] += ztwd_energy(Uffacerho_iii);
-					}
-				}
-			}
-		}
-	}PROF_END;
+// 					Ufface[sx_i][iii] -= omega * (X[YDIM][iii] + y0) * Uffacerho_iii;
+// 					Ufface[sy_i][iii] += omega * (X[XDIM][iii] + x0) * Uffacerho_iii;
+// 					Ufface[zz_i][iii] += sqr(dx) * omega * Uffacerho_iii / 6.0;
+// 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sx_i][iii]) / Uffacerho_iii;
+// 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sy_i][iii]) / Uffacerho_iii;
+// 					Ufface[egas_i][iii] += HALF * sqr(Ufface[sz_i][iii]) / Uffacerho_iii;
+// 					if (opts().eos == WD) {
+// 						Ufface[egas_i][iii] += ztwd_energy(Uffacerho_iii);
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+    PROF_END;
 }
 
 real grid::compute_fluxes() {
