@@ -27,6 +27,103 @@ std::unordered_map<std::string, int> grid::str_to_index_gravity;
 std::unordered_map<int, std::string> grid::index_to_str_hydro;
 std::unordered_map<int, std::string> grid::index_to_str_gravity;
 
+
+
+OCTOTIGER_FORCEINLINE real minmod(real a, real b) {
+//	return (std::copysign(HALF, a) + std::copysign(HALF, b)) * std::min(std::abs(a), std::abs(b));
+	bool a_is_neg = a < 0;
+	bool b_is_neg = b < 0;
+	if (a_is_neg != b_is_neg)
+		return ZERO;
+
+	real val = std::min(std::abs(a), std::abs(b));
+	return a_is_neg ? -val : val;
+}
+
+OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real c, real theta) {
+	return minmod(theta * minmod(a, b), c);
+}
+
+OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real theta = 1.0) {
+	return minmod(theta * minmod(a, b), HALF * (a + b));
+}
+
+
+void grid::smooth_boundary_interpolation(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub) {
+	const std::array<int,NDIM> D = {H_DNX, H_DNY, H_DNZ};
+	for( int field = 0; field < opts().n_fields; field++ ) {
+		for( int i = lb[0]; i < ub[0]; i += 2 ) {
+			for( int j = lb[1]; j < ub[1]; j += 2 ) {
+				for( int k = lb[2]; k < ub[2]; k += 2 ) {
+					bool u0_computed = false;
+					std::array<double,NDIM> slp;
+					const int iii = hindex(i,j,k);
+					for( int side = 0; side < 2; side++ ) {
+						int sgn = 2 * side - 1;
+						double u0 = 0.0;
+						for( int dim = 0; dim < NDIM; dim++ ) {	
+							int dima = dim == XDIM ? YDIM : XDIM;
+							int dimb = dim == ZDIM ? YDIM : ZDIM;
+							int str0 = D[dim];
+							if( from_coarse[iii + sgn * str0] ) {
+								if( !u0_computed ) {
+									for( int i0 = 0; i0 < 2; i++ ) {
+										for( int j0 = 0; j0 < 2; j++ ) {
+											for( int k0 = 0; k0 < 2; k++ ) {
+												u0 += U[field][hindex(i+i0,j+j0,k+k0)] * 0.125;
+											}	
+										}
+									}
+									u0_computed = true;
+								}
+								int stra = D[dima];
+								int strb = D[dimb];
+								slp[dim ] = minmod( u0 - sgn*U[field][iii + sgn*str0       ], u0 - sgn*U[field][iii + sgn*str0 + stra       ] ) / 1.5; 
+								slp[dim ] = minmod( u0 - sgn*U[field][iii + sgn*str0 + strb], u0 - sgn*U[field][iii + sgn*str0 + stra + strb] ) / 1.5; 
+								slp[dima] = minmod( U[field][iii+sgn*str0+stra] - U[field][iii+str0], U[field][iii+sgn*str0+stra+strb] - U[field][iii+sgn*str0+strb] ); 
+								slp[dimb] = minmod( U[field][iii+sgn*str0+strb] - U[field][iii+str0], U[field][iii+sgn*str0+stra+strb] - U[field][iii+sgn*str0+stra] );
+								slp[dim ] = minmod( slp[dim], U[field][iii + str0              ] -  U[field][iii]               ); 
+
+								slp[dim] = minmod( slp[dim], U[field][iii + str0              ] -  U[field][iii]               ); 
+								slp[dim] = minmod( slp[dim], U[field][iii + str0 + stra       ] -  U[field][iii + stra       ] ); 
+								slp[dim] = minmod( slp[dim], U[field][iii + str0 + strb       ] -  U[field][iii + strb       ] ); 
+								slp[dim] = minmod( slp[dim], U[field][iii + str0 + stra + strb] -  U[field][iii + stra + strb] ); 
+
+								slp[dima] = minmod( slp[dima], U[field][iii + stra + str0       ] -  U[field][iii + str0       ] ); 
+								slp[dima] = minmod( slp[dima], U[field][iii + stra + str0       ] -  U[field][iii + str0       ] ); 
+								slp[dima] = minmod( slp[dima], U[field][iii + stra + strb       ] -  U[field][iii + strb       ] ); 
+								slp[dima] = minmod( slp[dima], U[field][iii + stra + str0 + strb] -  U[field][iii + strb + str0] ); 
+			
+								slp[dimb] = minmod( slp[dimb], U[field][iii + strb              ] -  U[field][iii              ] ); 
+								slp[dimb] = minmod( slp[dimb], U[field][iii + strb + stra       ] -  U[field][iii + stra       ] ); 
+								slp[dimb] = minmod( slp[dimb], U[field][iii + strb + str0       ] -  U[field][iii + str0       ] ); 
+								slp[dimb] = minmod( slp[dimb], U[field][iii + strb + stra + str0] -  U[field][iii + stra + str0] ); 
+
+								for( int i0 = 0; i0 < 2; i++ ) {
+									int isgn = 2 * i - 1;
+									for( int j0 = 0; j0 < 2; j++ ) {
+										int jsgn = 2 * j - 1;
+										for( int k0 = 0; k0 < 2; k++ ) {
+											int ksgn = 2 * k - 1;
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 + 0.5 * isgn * slp[XDIM];
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 - 0.5 * isgn * slp[XDIM];
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 + 0.5 * jsgn * slp[YDIM];
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 - 0.5 * jsgn * slp[YDIM];
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 + 0.5 * ksgn * slp[ZDIM];
+											U[field][hindex(i+i0,j+j0,k+k0)] = u0 - 0.5 * ksgn * slp[ZDIM];
+										}
+									}
+								}
+							} 
+						}
+					}
+				}
+			}
+		}
+	}
+}	
+
+
 bool grid::is_hydro_field(const std::string& str) {
 	return str_to_index_hydro.find(str) != str_to_index_hydro.end();
 }
@@ -921,24 +1018,6 @@ void grid::velocity_inc(const space_vector& dv) {
 
 }
 
-OCTOTIGER_FORCEINLINE real minmod(real a, real b) {
-//	return (std::copysign(HALF, a) + std::copysign(HALF, b)) * std::min(std::abs(a), std::abs(b));
-	bool a_is_neg = a < 0;
-	bool b_is_neg = b < 0;
-	if (a_is_neg != b_is_neg)
-		return ZERO;
-
-	real val = std::min(std::abs(a), std::abs(b));
-	return a_is_neg ? -val : val;
-}
-
-OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real c, real theta) {
-	return minmod(theta * minmod(a, b), c);
-}
-
-OCTOTIGER_FORCEINLINE real minmod_theta(real a, real b, real theta = 1.0) {
-	return minmod(theta * minmod(a, b), HALF * (a + b));
-}
 
 std::vector<real> grid::get_flux_restrict(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
 		const geo::dimension& dim) const {
@@ -2014,6 +2093,17 @@ analytic_t grid::compute_analytic(real t) {
 	return a;
 }
 
+
+void grid::set_amr_flags(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, bool flag) {
+	for( int i = lb[0]; i < ub[0]; i++ ) {
+	for( int j = lb[1]; j < ub[1]; j++ ) {
+	for( int k = lb[2]; k < ub[2]; k++ ) {
+
+		from_coarse[hindex(i,j,k)] = flag;
+
+	}}}
+}
+
 void grid::allocate() {
 	PROF_BEGIN;
 	if (opts().radiation) {
@@ -2039,7 +2129,7 @@ void grid::allocate() {
 	L_c.resize(G_N3);
 	integer nlevel = 0;
 	com_ptr.resize(2);
-
+	from_coarse.resize(H_N3,false);
 	set_coordinates();
 
 #ifdef OCTOTIGER_HAVE_GRAV_PAR

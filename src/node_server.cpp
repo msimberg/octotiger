@@ -177,6 +177,28 @@ void node_server::collect_hydro_boundaries(bool tau_only) {
 			grid_ptr->set_physical_boundaries(face, current_time);
 		}
 	}
+
+
+	for (auto const& dir : geo::direction::full_set()) {
+		std::array<integer, NDIM> lb, ub;
+		get_boundary_size(lb, ub, dir, OUTER, INX, 2);
+		if (neighbors[dir].empty() && my_location.level() != 0) {
+			grid_ptr->set_amr_flags(lb, ub, true );		
+		} else {
+			grid_ptr->set_amr_flags(lb, ub, false );		
+		}
+	}
+
+
+	for (auto const& dir : geo::direction::full_set()) {
+		if (neighbors[dir].empty() && my_location.level() != 0) {
+			std::array<integer, NDIM> lb, ub;
+			get_boundary_size(lb, ub, dir, OUTER, INX, 2);
+			grid_ptr->smooth_boundary_interpolation(lb, ub);
+		}
+	}
+
+
 }
 
 void node_server::send_hydro_amr_boundaries(bool tau_only) {
@@ -191,11 +213,7 @@ void node_server::send_hydro_amr_boundaries(bool tau_only) {
 					std::vector<real> data;
 //						const integer width = dir.is_face() ? H_BW : 1;
 					const integer width = H_BW;
-					if (!tau_only) {
-						get_boundary_size(lb, ub, dir, OUTER, INX, width);
-					} else {
-						get_boundary_size(lb, ub, dir, OUTER, INX, width);
-					}
+					get_boundary_size(lb, ub, dir, OUTER, INX, width);
 					for (integer dim = 0; dim != NDIM; ++dim) {
 						lb[dim] = ((lb[dim] - H_BW)) + 2 * H_BW + ci.get_side(dim) * (INX);
 						ub[dim] = ((ub[dim] - H_BW)) + 2 * H_BW + ci.get_side(dim) * (INX);

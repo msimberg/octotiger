@@ -133,6 +133,7 @@ private:
 	std::vector<hydro_state_t<std::vector<real>>> F;
 	std::vector<std::vector<real>> X;
 	std::vector<v4sd> G;
+	std::vector<bool> from_coarse;
 	std::shared_ptr<std::vector<multipole>> M_ptr;
 	std::shared_ptr<std::vector<real>> mon_ptr;
 	std::vector<expansion> L;
@@ -281,10 +282,12 @@ public:
 	std::pair<std::vector<real>, std::vector<real> > field_range() const;
 	void velocity_inc(const space_vector& dv);
 	std::vector<real> get_restrict() const;
+	void smooth_boundary_interpolation(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub);
 	std::vector<real> get_flux_restrict(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
 			const geo::dimension&) const;
 	std::vector<real> get_prolong(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, bool tau_only =
 			false);
+	void set_amr_flags(const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub, bool flag);
 	void set_prolong(const std::vector<real>&, std::vector<real>&&);
 	void set_restrict(const std::vector<real>&, const geo::octant&);
 	void set_flux_restrict(const std::vector<real>&, const std::array<integer, NDIM>& lb, const std::array<integer, NDIM>& ub,
