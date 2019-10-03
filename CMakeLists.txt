@@ -446,5 +446,30 @@ if (OCTOTIGER_WITH_KOKKOS)
     HEADERS
       test_problems/flux_kokkos.hpp
   )
+
+  ################################################################################
+  # Standalone Kokkos test library and executable
+  ################################################################################
+  add_hpx_library(
+    kernel
+    SOURCES kokkos_test/kernel.cpp
+    HEADERS kokkos_test/kernel.hpp
+  )
+
+  # NOTE: We'd like to link to kokkos only here to keep the device code
+  # contained in this target but...
+  target_link_libraries(kernel PRIVATE Kokkos::kokkos)
+
+  # ... since we need to do Kokkos::initialize and friends in the main executable
+  # we have to link to kokkos here as well. Because of the way kokkos wants to
+  # compile *everything* with the same compiler (e.g. nvcc or clang with cuda)
+  # this means that non-kernel code will have to be ifdefed out to make
+  # compilation work with a bigger example (e.g. math functions are not constexpr
+  # when compiling in device mode).
+  add_hpx_executable(
+    kokkos_kernel_test
+    DEPENDENCIES kernel Kokkos::kokkos
+    SOURCES kokkos_test/kokkos_kernel_test.cpp
+  )
 endif()
 
