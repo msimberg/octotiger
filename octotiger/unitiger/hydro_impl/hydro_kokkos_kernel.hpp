@@ -145,6 +145,11 @@ void flux_impl_teamless(hpx::kokkos::executor<kokkos_backend_t>& executor,
             policy.set_chunk_size(number_blocks * 2);
         }
 
+        // This sync doesn't really make a difference...
+        sync_kokkos_host_kernel(executor);
+        // ... but chaining this in front of the actual kernel does make a difference
+        executor.instance().impl_bulk_plain_erased(
+            false, false, std::function<void(int)>([](int) {}), 1, hpx::threads::thread_stacksize::nostack);
         Kokkos::parallel_for(
             "kernel hydro flux", policy, KOKKOS_LAMBDA(int idx) {
                 // Index helpers:
@@ -294,24 +299,26 @@ void flux_impl_teamless(hpx::kokkos::executor<kokkos_backend_t>& executor,
                       SIMD_NAMESPACE::element_aligned_tag{});
                 }
 
-                // Write Maximum of local team to amax:
-                amax[block_id + amax_slice_offset] = current_amax;
-                amax_indices[block_id + max_indices_slice_offset] = current_i;
-                amax_d[block_id + max_indices_slice_offset] = current_d;
-                // Save faces to the end of the amax buffer This avoids putting combined_q back on
-                // the host side just to read those few values
-                const int flipped_dim = flip_dim(amax_d[block_id + max_indices_slice_offset], dim);
-                for (int f = 0; f < nf; f++) {
-                    amax[(number_blocks) + block_id * 2 * nf + f + amax_slice_offset] =
-                        q_combined_slice[amax_indices[block_id + max_indices_slice_offset] +
-                            f * face_offset +
-                            dim_offset * amax_d[block_id + max_indices_slice_offset]];
-                    amax[(number_blocks) + block_id * 2 * nf + nf + f + amax_slice_offset] =
-                        q_combined_slice[amax_indices[block_id +
-                        max_indices_slice_offset] -
-                            compressedH_DN[dim] + f * face_offset + dim_offset * flipped_dim];
-                }
+                // // Write Maximum of local team to amax:
+                // amax[block_id + amax_slice_offset] = current_amax;
+                // amax_indices[block_id + max_indices_slice_offset] = current_i;
+                // amax_d[block_id + max_indices_slice_offset] = current_d;
+                // // Save faces to the end of the amax buffer This avoids putting combined_q back on
+                // // the host side just to read those few values
+                // const int flipped_dim = flip_dim(amax_d[block_id + max_indices_slice_offset], dim);
+                // for (int f = 0; f < nf; f++) {
+                //     amax[(number_blocks) + block_id * 2 * nf + f + amax_slice_offset] =
+                //         q_combined_slice[amax_indices[block_id + max_indices_slice_offset] +
+                //             f * face_offset +
+                //             dim_offset * amax_d[block_id + max_indices_slice_offset]];
+                //     amax[(number_blocks) + block_id * 2 * nf + nf + f + amax_slice_offset] =
+                //         q_combined_slice[amax_indices[block_id +
+                //         max_indices_slice_offset] -
+                //             compressedH_DN[dim] + f * face_offset + dim_offset * flipped_dim];
+                // }
             });
+        // This sync also doesn't make a difference
+        sync_kokkos_host_kernel(executor);
     }
 }
 
@@ -1113,10 +1120,10 @@ timestep_t device_interface_kokkos_hydro(executor_t& exec,
     //     [](const auto&) {});
     // Kokkos::parallel_for(Kokkos::RangePolicy<decltype(exec.instance())>(exec.instance(), 0, 1),
     //     [](int) {});
-    exec.instance().impl_bulk_plain_erased(
-        false, true, std::function<void(int)>([](int) {}), 1, hpx::threads::thread_stacksize::default_);
-
-    //sync_kokkos_host_kernel(exec);
+    // sync_kokkos_host_kernel(exec);
+    // exec.instance().impl_bulk_plain_erased(
+    //     false, false, std::function<void(int)>([](int) {}), 1, hpx::threads::thread_stacksize::default_);
+    // sync_kokkos_host_kernel(exec);
 
     flux_impl_teamless<host_simd_t, host_simd_mask_t>(exec, agg_exec, q, combined_x, f,
         amax, amax_indices, amax_d, masks, omega, dx, A_, B_, nf, fgamma,
