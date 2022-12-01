@@ -1108,77 +1108,19 @@ timestep_t device_interface_kokkos_hydro(executor_t& exec,
     aggregated_host_buffer<int, executor_t> amax_indices(alloc_host_int, blocks * max_slices);
     aggregated_host_buffer<int, executor_t> amax_d(alloc_host_int, blocks * max_slices);
     const host_buffer<bool>& masks = get_flux_host_masks<host_buffer<bool>>();
-    /* find_contact_discs_impl(exec, agg_exec, combined_u, P, disc, physics<NDIM>::A_, physics<NDIM>::B_, */
-    /*     physics<NDIM>::fgamma_, physics<NDIM>::de_switch_1, ndir, nf, */
-    /*     {1, 32, 8, 8}, {1, 32, 8, 8}); */
 
-    /* // Pre recon */
-    /* hydro_pre_recon_impl(exec, agg_exec, combined_large_x, omega, angmom, combined_u, nf, n_species, */
-    /*     {1, 64, 8, 8}); */
+    // Kokkos::parallel_for(Kokkos::TeamPolicy<decltype(exec.instance())>(exec.instance(), 1, 1),
+    //     [](const auto&) {});
+    // Kokkos::parallel_for(Kokkos::RangePolicy<decltype(exec.instance())>(exec.instance(), 0, 1),
+    //     [](int) {});
+    exec.instance().impl_bulk_plain_erased(
+        false, true, std::function<void(int)>([](int) {}), 1, hpx::threads::thread_stacksize::default_);
 
-    /* sync_kokkos_host_kernel(exec); */
+    //sync_kokkos_host_kernel(exec);
 
-    // Reconstruct
-#ifdef HPX_HAVE_APEX
-    /* auto reconstruct_timer = apex::start("kernel hydro_reconstruct kokkos"); */
-#endif
-    if (angmom_index > -1) {
-        /* reconstruct_impl<host_simd_t, host_simd_mask_t>(exec, agg_exec, omega, nf, angmom_index, */
-        /*     smooth_field, disc_detect, q, combined_x, combined_u, AM, dx, disc, n_species, ndir, */
-        /*     nangmom, 1, 1); */
-    } else {
-        /* reconstruct_no_amc_impl<host_simd_t, host_simd_mask_t>(exec, agg_exec, omega, nf, */
-        /*     angmom_index, smooth_field, disc_detect, q, combined_x, combined_u, AM, dx, disc, */
-        /*     n_species, ndir, nangmom, 1, 1); */
-    }
-#ifdef HPX_HAVE_APEX
-    /* apex::stop(reconstruct_timer); */
-#endif
-        using policytype = Kokkos::TeamPolicy<decltype(exec.instance())>;
-        using membertype = typename policytype::member_type;
-        policytype policy = Kokkos::Experimental::require(
-            Kokkos::TeamPolicy<decltype(exec.instance())>(
-                exec.instance(), blocks * number_slices, 1),
-            Kokkos::Experimental::WorkItemProperty::HintLightWeight);
-        /* auto policy = Kokkos::Experimental::require( */
-        /*     Kokkos::RangePolicy<decltype(agg_exec.get_underlying_executor().instance())>( */
-        /*         agg_exec.get_underlying_executor().instance(), 0, blocks * number_slices), */
-        /*     Kokkos::Experimental::WorkItemProperty::HintLightWeight); */
-
-        if constexpr (std::is_same_v<
-                          typename std::remove_reference<decltype(agg_exec.get_underlying_executor())>::type,
-                          hpx::kokkos::hpx_executor>) {
-            policy.set_chunk_size(blocks / 4);
-            assert(team_size == 1);
-        }
-        policy.set_chunk_size(blocks * 2);
-        Kokkos::parallel_for(
-            "kernel hydro reconstruct_no_amc", policy,
-            [](const membertype& team_handle) {
-            /* KOKKOS_LAMBDA(int idx) { */
-                const int slice_id = (team_handle.league_rank() / 1);
-                const int index_base = (team_handle.league_rank() % 1) *
-                1;
-            });
-
-    // TODO Uncomment for any cast crashes
-    sync_kokkos_host_kernel(exec);
-
-    /* sync_kokkos_host_kernel(agg_exec.get_underlying_executor()); */
-    /* Kokkos::fence(); */
-
-    // Flux
-
-
-#ifdef HPX_HAVE_APEX
-    /* auto flux_timer = apex::start("kernel hydro_flux kokkos"); */
-#endif
     flux_impl_teamless<host_simd_t, host_simd_mask_t>(exec, agg_exec, q, combined_x, f,
         amax, amax_indices, amax_d, masks, omega, dx, A_, B_, nf, fgamma,
         de_switch_1, blocks, 1);
-#ifdef HPX_HAVE_APEX
-    /* apex::stop(flux_timer); */
-#endif
 
     sync_kokkos_host_kernel(exec);
     // TODO Can be used instead of the sync after the team policy
